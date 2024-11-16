@@ -9,14 +9,17 @@ fi
 
 if [ -z "$2" ]; then
     declare -g month=$(echo "from datetime import datetime; print(datetime.today().month)" | python)
+    declare -g year=$(echo "from datetime import datetime; print(datetime.today().year)" | python)
 else
     declare -g month="$2"
 fi
 
+monthStr=$(echo "print(['','Januar','Feburar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'][$month])" | python)
 data=$(curl -su bot:RYV4463MpHAritiwwHpow7msQX2TJbkX https://warmulla.kaleidox.de/index.php/apps/tables/api/1/tables/2/rows | jq 'sort_by((.data[] | select(.columnId == 7) | .value),(.data[] | select(.columnId == 9) | .value))')
 
 # print csv table header
-echo "Tag,Kunde,Von,Bis,Gesamt,Tag Gesamt,Dezimal"
+echo "$user,$monthStr $year,Von,Bis,Gesamt,Tag Gesamt,Dezimal"
+echo ','
 
 declare -g any=0
 declare -g last='0-0-0'
