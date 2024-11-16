@@ -1,5 +1,9 @@
 #!/bin/bash
 
+if [ -z "$1" ]; then
+    month=$(echo "from datetime import datetime; print(datetime.today().month)" | python)
+fi
+
 data=$(curl -su bot:RYV4463MpHAritiwwHpow7msQX2TJbkX https://warmulla.kaleidox.de/index.php/apps/tables/api/1/tables/2/rows | jq 'sort_by((.data[] | select(.columnId == 7) | .value),(.data[] | select(.columnId == 9) | .value))')
 
 # print csv table header
@@ -7,22 +11,22 @@ echo "Tag,Kunde,Von,Bis,Gesamt,Tag Gesamt,Dezimal"
 
 export any=0
 export last=''
-echo $data | jq -c '.[]' | while read -r item; do
+echo "$data" | jq -c '.[]' | while read -r item; do
     date=$(echo "$item" | jq -r '.data[] | select(.columnId == 7) | .value')
+    if [ "$month" != "$(echo "$date" | sed 's/.*-\(.*\)-\(.*\)/\1/' | sed 's/^0*//')" ]; then continue; fi
     day=$(echo "$date" | sed 's/.*-.*-\(.*\)/\1/' | sed 's/^0*//')
-    month=$(echo "$date" | sed 's/.*-\(.*\)-\(.*\)/\1/')
-    year=$(echo "$date" | sed 's/\(.*\)-.*-.*/\1/')
+    year=$(echo "$date" | sed 's/\(.*\)-.*-.*/\1/' | sed 's/^0*//')
 
     # if date changed:
     if [ "$date" != "$last" ]; then
-        dayTotal=
+        dayTotal=$(format "$dayTotalDecimal")
 
-        if [ $any == 0 ]; then
+        if [ "$any" == 0 ]; then
             export any=1
         else
             echo ",$dayTotal,$dayTotalDecimal"
+            dayTotalDecimal='0.00'
         fi
-        dayTotalDecimal='0.00'
 
         # todo: on newline, append wday combination
         wday=$(echo "from datetime import datetime; print(['Mo','Di','Mi','Do','Fr','Sa','So'][datetime($year,$month,$day).weekday()])" | python)
@@ -34,9 +38,9 @@ echo $data | jq -c '.[]' | while read -r item; do
     fi
     export last="$date"
 
-    customer=$(echo $item | jq -r '.data[] | select(.columnId == 8) | .value')
-    start=$(echo $item | jq -r '.data[] | select(.columnId == 9) | .value')
-    end=$(echo $item | jq -r '.data[] | select(.columnId == 10) | .value')
+    customer=$(echo "$item" | jq -r '.data[] | select(.columnId == 8) | .value')
+    start=$(echo "$item" | jq -r '.data[] | select(.columnId == 9) | .value')
+    end=$(echo "$item" | jq -r '.data[] | select(.columnId == 10) | .value')
 
     echo -n "$customer,"
 
@@ -50,19 +54,7 @@ echo $data | jq -c '.[]' | while read -r item; do
 
     format() {
         >&2 echo "### DEBUG: format $1"
-
-        local input="$1"
-        local hours=${input%.*}
-        local fraction=${input#*.}
-        local minutes
-
-        if [[ "$input" != *.* ]]; then
-            fraction=0
-        fi
-
-        minutes=$(printf "%.0f" "$(echo "scale=2; ($fraction * 60) / 1" | bc)")
-
-        printf "%02d:%02d\n" "$hours" "$minutes"
+        echo "decimal_hours = $1;" 'hours = int(decimal_hours); minutes = int((decimal_hours - hours) * 60); print(f"{hours:02}:{minutes:02}")' | python
     }
 
     appendTimeblock() {
