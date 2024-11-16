@@ -1,7 +1,16 @@
 #!/bin/bash
 
 if [ -z "$1" ]; then
-    month=$(echo "from datetime import datetime; print(datetime.today().month)" | python)
+    >&2 echo 'No user defined'
+    exit 1
+else
+    declare -g user="$1"
+fi
+
+if [ -z "$2" ]; then
+    declare -g month=$(echo "from datetime import datetime; print(datetime.today().month)" | python)
+else
+    declare -g month="$2"
 fi
 
 data=$(curl -su bot:RYV4463MpHAritiwwHpow7msQX2TJbkX https://warmulla.kaleidox.de/index.php/apps/tables/api/1/tables/2/rows | jq 'sort_by((.data[] | select(.columnId == 7) | .value),(.data[] | select(.columnId == 9) | .value))')
@@ -9,9 +18,19 @@ data=$(curl -su bot:RYV4463MpHAritiwwHpow7msQX2TJbkX https://warmulla.kaleidox.d
 # print csv table header
 echo "Tag,Kunde,Von,Bis,Gesamt,Tag Gesamt,Dezimal"
 
-export any=0
-export last=''
-echo "$data" | jq -c '.[]' | while read -r item; do
+declare -g any=0
+declare -g last='0-0-0'
+declare -g dayTotalDecimal='0.0'
+
+format() {
+    timeDec="$1"
+    >&2 echo "### DEBUG: format $timeDec"
+    echo "decimal_hours = $timeDec;" 'hours = int(decimal_hours); minutes = int((decimal_hours - hours) * 60); print(f"{hours:02}:{minutes:02}")' | python
+}
+
+while read -r item; do
+    createdBy=$(echo "$item" | jq -r '.createdBy')
+    if [ "$user" != "$createdBy" ]; then continue; fi
     date=$(echo "$item" | jq -r '.data[] | select(.columnId == 7) | .value')
     if [ "$month" != "$(echo "$date" | sed 's/.*-\(.*\)-\(.*\)/\1/' | sed 's/^0*//')" ]; then continue; fi
     day=$(echo "$date" | sed 's/.*-.*-\(.*\)/\1/' | sed 's/^0*//')
@@ -25,7 +44,8 @@ echo "$data" | jq -c '.[]' | while read -r item; do
             export any=1
         else
             echo ",$dayTotal,$dayTotalDecimal"
-            dayTotalDecimal='0.00'
+            declare -g dayTotalDecimal='0.00'
+            >&2 echo "### DEBUG: Resetting dayTotalDecimal to 0.00"
         fi
 
         # todo: on newline, append wday combination
@@ -52,11 +72,6 @@ echo "$data" | jq -c '.[]' | while read -r item; do
         echo "scale=2; $hours + (0.25 * ($minutes / 15))" | bc
     }
 
-    format() {
-        >&2 echo "### DEBUG: format $1"
-        echo "decimal_hours = $1;" 'hours = int(decimal_hours); minutes = int((decimal_hours - hours) * 60); print(f"{hours:02}:{minutes:02}")' | python
-    }
-
     appendTimeblock() {
         >&2 echo "### DEBUG: block $1 - $2"
 
@@ -68,7 +83,9 @@ echo "$data" | jq -c '.[]' | while read -r item; do
 
         # calculate delta time (as total time)
         totalDec=$(echo "scale=2; $endDec - $startDec" | bc)
-        dayTotalDecimal=$(echo "scale=2; $dayTotalDecimal + $totalDec")
+        >&2 echo "### DEBUG: dayTotalDecimal before update=$dayTotalDecimal"
+        declare -g dayTotalDecimal=$(echo "scale=2; $dayTotalDecimal + $totalDec" | bc)
+        >&2 echo "### DEBUG: dayTotalDecimal after update=$dayTotalDecimal"
         totalFormatted=$(format "$totalDec")
 
         echo -n "$1,$2,$totalFormatted"
@@ -94,5 +111,9 @@ echo "$data" | jq -c '.[]' | while read -r item; do
         breakEndFormatted=$(format "$breakEndDec")
         appendTimeblock "$breakEndFormatted" "$end"
     fi
-done
+done < <(echo "$data" | jq -c '.[]')
+
+dayTotal=$(format "$dayTotalDecimal")
+echo ",$dayTotal,$dayTotalDecimal"
+
 echo ''
