@@ -23,7 +23,8 @@ echo ','
 
 declare -g any=0
 declare -g last='0-0-0'
-declare -g dayTotalDecimal='0.0'
+declare -g dayTotalDec='0.0'
+declare -g totalHoursDec='0.0'
 
 format() {
     timeDec="$1"
@@ -41,14 +42,14 @@ while read -r item; do
 
     # if date changed:
     if [ "$date" != "$last" ]; then
-        dayTotal=$(format "$dayTotalDecimal")
+        dayTotal=$(format "$dayTotalDec")
 
         if [ "$any" == 0 ]; then
             export any=1
         else
-            echo ",$dayTotal,$dayTotalDecimal"
-            declare -g dayTotalDecimal='0.00'
-            >&2 echo "### DEBUG: Resetting dayTotalDecimal to 0.00"
+            echo ",$dayTotal,$dayTotalDec"
+            declare -g dayTotalDec='0.00'
+            >&2 echo "### DEBUG: Resetting dayTotalDec to 0.00"
         fi
 
         # todo: on newline, append wday combination
@@ -86,9 +87,10 @@ while read -r item; do
 
         # calculate delta time (as total time)
         totalDec=$(echo "scale=2; $endDec - $startDec" | bc)
-        >&2 echo "### DEBUG: dayTotalDecimal before update=$dayTotalDecimal"
-        declare -g dayTotalDecimal=$(echo "scale=2; $dayTotalDecimal + $totalDec" | bc)
-        >&2 echo "### DEBUG: dayTotalDecimal after update=$dayTotalDecimal"
+        >&2 echo "### DEBUG: dayTotalDec before update=$dayTotalDec"
+        declare -g dayTotalDec=$(echo "scale=2; $dayTotalDec + $totalDec" | bc)
+        declare -g totalHoursDec=$(echo "scale=2; $totalHoursDec + $totalDec" | bc)
+        >&2 echo "### DEBUG: dayTotalDec after update=$dayTotalDec"
         totalFormatted=$(format "$totalDec")
 
         echo -n "$1,$2,$totalFormatted"
@@ -116,7 +118,10 @@ while read -r item; do
     fi
 done < <(echo "$data" | jq -c '.[]')
 
-dayTotal=$(format "$dayTotalDecimal")
-echo ",$dayTotal,$dayTotalDecimal"
+dayTotal=$(format "$dayTotalDec")
+echo ",$dayTotal,$dayTotalDec"
+
+echo ','
+echo ",,,,,,$totalHoursDec"
 
 echo ''
