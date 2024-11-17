@@ -2,6 +2,6 @@
 
 user="$1"
 
-rm -f table.csv
+rm -f "$user.csv"
 ./createUserMonthCsv.sh "$user" 2> /dev/null >> "$user.csv"
 ssconvert "$user.csv" "$user.pdf"
