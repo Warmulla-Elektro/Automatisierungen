@@ -12,28 +12,30 @@ else
     declare -g user="$1"
 fi
 
-declare -g week=$(echo "from datetime import datetime; print(datetime.today().isocalendar().week)" | python)
+declare -g week=$(python common.py weekDate)
+#declare -g week=$(echo "from datetime import datetime; print(datetime.today().isocalendar().week)" | python)
 if [ ! -z "$2" ]; then
-    if [ $(echo "$2" | dd bs=1 count=1 2> /dev/null) == "-" ]; then
+    if [ "$(echo "$2" | dd bs=1 count=1 2> /dev/null)" == "-" ]; then
         declare -g week=$(echo "$week $2" | bc)
     else
         declare -g week="$2"
     fi
 fi
-declare -g year=$(echo "from datetime import datetime; print(datetime.today().year)" | python)
-declare -g month=$(echo "from datetime import datetime; print(datetime.today().month)" | python)
+declare -g year=$(python common.py year)
+declare -g month=$(python common.py month)
 
-monthStr=$(echo "print(['','Januar','Feburar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'][$month])" | python)
+monthStr=$(python common.py monthstr)
+#monthStr=$(echo "print(['','Januar','Feburar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'][$month])" | python)
 
 # load database
-data=$(((eval "$(find '.cache/data.json' -amin -1 | grep -q .)" && cat '.cache/data.json')\
+data=$( ( (eval "$(find '.cache/data.json' -amin -1 | grep -q .)" && cat '.cache/data.json')\
     || (>&2 echo 'WARN: Could not load cached data, refreshing cache...'\
         && curl -u "bot:$(cat ../nc_api_bot_password.cred)" https://warmulla.kaleidox.de/index.php/apps/tables/api/1/tables/2/rows\
             | tee '.cache/data.json'))\
     | jq "[.[] | select(.createdBy == \"$user\")]"\
     | jq 'sort_by((.data[] | select(.columnId == 7) | .value),(.data[] | select(.columnId == 9) | .value))')
 
-if [ $(echo "$data" | jq -rc '.[]' | wc -l) == "0" ]; then
+if [ "$(echo "$data" | jq -rc '.[]' | wc -l)" == "0" ]; then
     >&2 echo 'INFO: No data found for the specified user and week'
     exit 1
 fi
@@ -53,15 +55,16 @@ declare -g totalHoursDec='0.0'
 format() {
     timeDec="$1"
     if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: format $timeDec"; fi
-    echo "decimal_hours = $timeDec;" 'hours = int(decimal_hours); minutes = int((decimal_hours - hours) * 60); print(f"{hours:02}:{minutes:02}")' | python
+    python common.py format "$timeDec"
+    #echo "decimal_hours = $timeDec;" 'hours = int(decimal_hours); minutes = int((decimal_hours - hours) * 60); print(f"{hours:02}:{minutes:02}")' | python
 }
 
 while read -r item; do
     date=$(echo "$item" | jq -r '.data[] | select(.columnId == 7) | .value')
-    #if [ "$month" != "$(echo "$date" | sed 's/.*-\(.*\)-\(.*\)/\1/' | sed 's/^0*//')" ]; then continue; fi
-    day=$(echo "$date" | sed 's/.*-.*-\(.*\)/\1/' | sed 's/^0*//')
-    year=$(echo "$date" | sed 's/\(.*\)-.*-.*/\1/' | sed 's/^0*//')
-    if [ "$week" != $(echo "from datetime import datetime; print(datetime($year, $month, $day).isocalendar().week)" | python) ]; then continue; fi
+    day="$(python common.py parseDay "$date")"
+    month="$(python common.py parseMonth "$date")"
+    year="$(python common.py parseYear "$date")"
+    if [ "$week" != "$(python common.py week "$year" "$month" "$day")" ]; then continue; fi
 
     # if date changed:
     if [ "$date" != "$last" ]; then
@@ -76,7 +79,8 @@ while read -r item; do
         fi
 
         # todo: on newline, append wday combination
-        wday=$(echo "from datetime import datetime; print(['Mo','Di','Mi','Do','Fr','Sa','So'][datetime($year,$month,$day).weekday()])" | python)
+        wday=$(python common.py weekday "$year" "$month" "$day")
+        #wday=$(echo "from datetime import datetime; print(['Mo','Di','Mi','Do','Fr','Sa','So'][datetime($year,$month,$day).weekday()])" | python)
         echo -n "$wday $day,"
     else
         # else empty newline without wday combination
