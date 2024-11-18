@@ -14,7 +14,7 @@ fi
 
 declare -g week=$(echo "from datetime import datetime; print(datetime.today().isocalendar().week)" | python)
 if [ ! -z "$2" ]; then
-    if [ $(echo "$2" | dd bs=1 count=1) == "-" ]; then
+    if [ $(echo "$2" | dd bs=1 count=1 2> /dev/null) == "-" ]; then
         declare -g week=$(echo "$week $2" | bc)
     else
         declare -g week="$2"
@@ -24,26 +24,39 @@ declare -g year=$(echo "from datetime import datetime; print(datetime.today().ye
 declare -g month=$(echo "from datetime import datetime; print(datetime.today().month)" | python)
 
 monthStr=$(echo "print(['','Januar','Feburar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'][$month])" | python)
-data=$(curl -su "bot:$(cat ../nc_api_bot_password.cred)" https://warmulla.kaleidox.de/index.php/apps/tables/api/1/tables/2/rows | jq 'sort_by((.data[] | select(.columnId == 7) | .value),(.data[] | select(.columnId == 9) | .value))')
+
+# load database
+data=$(((eval "$(find '.cache/data.json' -amin -1 | grep -q .)" && cat '.cache/data.json')\
+    || (>&2 echo 'WARN: Could not load cached data, refreshing cache...'\
+        && curl -u "bot:$(cat ../nc_api_bot_password.cred)" https://warmulla.kaleidox.de/index.php/apps/tables/api/1/tables/2/rows\
+            | tee '.cache/data.json'))\
+    | jq "[.[] | select(.createdBy == \"$user\")]"\
+    | jq 'sort_by((.data[] | select(.columnId == 7) | .value),(.data[] | select(.columnId == 9) | .value))')
+
+if [ $(echo "$data" | jq -rc '.[]' | wc -l) == "0" ]; then
+    >&2 echo 'INFO: No data found for the specified user and week'
+    exit 1
+fi
+
+>&2 echo "INFO: Converting table to CSV..."
 
 # print csv table header
 echo "$user,$monthStr $year Woche $week,Von,Bis,Gesamt,Tag Gesamt,Dezimal"
 echo ','
 
 declare -g any=0
+declare -g count=0
 declare -g last='0-0-0'
 declare -g dayTotalDec='0.0'
 declare -g totalHoursDec='0.0'
 
 format() {
     timeDec="$1"
-    >&2 echo "DEBUG: format $timeDec"
+    if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: format $timeDec"; fi
     echo "decimal_hours = $timeDec;" 'hours = int(decimal_hours); minutes = int((decimal_hours - hours) * 60); print(f"{hours:02}:{minutes:02}")' | python
 }
 
 while read -r item; do
-    createdBy=$(echo "$item" | jq -r '.createdBy')
-    if [ "$user" != "$createdBy" ]; then continue; fi
     date=$(echo "$item" | jq -r '.data[] | select(.columnId == 7) | .value')
     #if [ "$month" != "$(echo "$date" | sed 's/.*-\(.*\)-\(.*\)/\1/' | sed 's/^0*//')" ]; then continue; fi
     day=$(echo "$date" | sed 's/.*-.*-\(.*\)/\1/' | sed 's/^0*//')
@@ -59,7 +72,7 @@ while read -r item; do
         else
             echo ",$dayTotal,$dayTotalDec"
             declare -g dayTotalDec='0.00'
-            >&2 echo "DEBUG: Resetting dayTotalDec to 0.00"
+            if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: Resetting dayTotalDec to 0.00"; fi
         fi
 
         # todo: on newline, append wday combination
@@ -79,7 +92,7 @@ while read -r item; do
     echo -n "$customer,"
 
     calcDecimal() {
-        >&2 echo "DEBUG: decimal $1"
+        if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: decimal $1"; fi
         # obtain hours and minutes
         hours=$(echo "$1" | sed 's/\(.*\):.*/\1/')
         minutes=$(echo "$1" | sed 's/.*:\(.*\)/\1/')
@@ -87,20 +100,20 @@ while read -r item; do
     }
 
     appendTimeblock() {
-        >&2 echo "DEBUG: block $1 - $2"
+        if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: block $1 - $2"; fi
 
         # calculate decimal hours each
         startDec=$(calcDecimal "$1")
         endDec=$(calcDecimal "$2")
 
-        >&2 echo "DEBUG: end $endDec start $startDec"
+        if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: end $endDec start $startDec"; fi
 
         # calculate delta time (as total time)
         totalDec=$(echo "scale=2; $endDec - $startDec" | bc)
-        >&2 echo "DEBUG: dayTotalDec before update=$dayTotalDec"
+        if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: dayTotalDec before update=$dayTotalDec"; fi
         declare -g dayTotalDec=$(echo "scale=2; $dayTotalDec + $totalDec" | bc)
         declare -g totalHoursDec=$(echo "scale=2; $totalHoursDec + $totalDec" | bc)
-        >&2 echo "DEBUG: dayTotalDec after update=$dayTotalDec"
+        if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: dayTotalDec after update=$dayTotalDec"; fi
         totalFormatted=$(format "$totalDec")
 
         echo -n "$1,$2,$totalFormatted"
@@ -108,7 +121,7 @@ while read -r item; do
 
     # split at break and foreach before and after, do the following:
     breakMultiplier=$(echo "$item" | jq -r '.data[] | select(.columnId == 13) | .value')
-    >&2 echo "DEBUG: breakMultiplier $breakMultiplier"
+    if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: breakMultiplier $breakMultiplier"; fi
 
     if [ -z "$breakMultiplier" ] || [ "$breakMultiplier" -eq "0" ]; then
         # if muli is 0, just have one entry
@@ -126,6 +139,7 @@ while read -r item; do
         breakEndFormatted=$(format "$breakEndDec")
         appendTimeblock "$breakEndFormatted" "$end"
     fi
+    declare -g count=$(echo "$count + 1" | bc)
 done < <(echo "$data" | jq -c '.[]')
 
 dayTotal=$(format "$dayTotalDec")
@@ -135,3 +149,4 @@ echo ','
 echo ",,,,,,$totalHoursDec"
 
 echo ''
+>&2 echo "INFO: Parsing CSV for user $user and week $week successful; processed $count out of $(echo "$data" | jq -c '.[]' | wc -l) entries"
