@@ -18,7 +18,7 @@ if [ -d '.out' ]; then
 fi
 mkdir '.out'
 
-users=$(((eval "$(find '.cache/users.json' -amin -999 | grep -q .)" && cat '.cache/users.json')\
+users=$( ( (eval "$(find '.cache/users.json' -amin -999 | grep -q .)" && cat '.cache/users.json')\
     || (>&2 echo 'WARN: Could not load cached data, refreshing cache...'\
         && curl -su "bot:$(cat ../nc_api_bot_password.cred)" -H OCS-APIRequest:true -H Accept:application/json -X get https://warmulla.kaleidox.de/ocs/v1.php/cloud/users\
             | tee '.cache/users.json'))\
