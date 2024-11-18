@@ -13,7 +13,10 @@ if [ ! -d '.cache' ]; then
     mkdir '.cache'
     rm '.cache/*.csv'
 fi
-if [ ! -d '.out' ]; then mkdir '.out'; fi
+if [ -d '.out' ]; then
+    rm -rf '.out'
+fi
+mkdir '.out'
 
 users=$(((eval "$(find '.cache/users.json' -amin -999 | grep -q .)" && cat '.cache/users.json')\
     || (>&2 echo 'WARN: Could not load cached data, refreshing cache...'\
