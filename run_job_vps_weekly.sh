@@ -1,4 +1,6 @@
 git pull -f
 
-cd HourTableConverter
-./run.sh
+(
+  cd HourTableConverter || exit 1
+  ./run.sh
+)
