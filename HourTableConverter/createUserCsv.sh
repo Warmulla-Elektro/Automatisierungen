@@ -39,7 +39,7 @@ data=$( ( (eval "$(find '.cache/data.json' -amin -1 | grep -q .)" && cat '.cache
     | jq 'sort_by((.data[] | select(.columnId == 7) | .value),(.data[] | select(.columnId == 9) | .value))')
 
 if [ "$(echo "$data" | jq -rc '.[]' | wc -l)" == "0" ]; then
-    >&2 echo 'INFO: No data found for the specified user and targetWeek'
+    >&2 echo "WARN: No data found for the specified user $user and targetWeek $targetWeek"
     exit 1
 fi
 
@@ -158,4 +158,9 @@ echo ','
 echo ",,,,,,$totalHoursDec"
 
 echo ''
->&2 echo "INFO: Parsing CSV for user $user and targetWeek $targetWeek successful; processed $count out of $(echo "$data" | jq -c '.[]' | wc -l) entries"
+if [ "$count" == "0" ]; then
+  rm -f ".cache/$user.csv"
+  >&2 echo "WARN: No data found for the specified user $user and targetWeek $targetWeek"
+else
+  >&2 echo "INFO: Parsing CSV for user $user and targetWeek $targetWeek successful; processed $count out of $(echo "$data" | jq -c '.[]' | wc -l) entries"
+fi

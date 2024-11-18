@@ -9,6 +9,24 @@ if [ "$1" == "reload" ]; then
     rm -r .cache
 fi
 
+declare -g targetWeek="$(python common.py weekDate)"
+if [ ! -z "$2" ]; then
+    if [ "$(echo "$2" | dd bs=1 count=1 2> /dev/null)" == "-" ]; then
+        declare -g targetWeek="$(echo "$targetWeek $2" | bc)"
+    else
+        declare -g targetWeek="$2"
+    fi
+fi
+
+declare -g targetYear="$(python common.py year)"
+if [ ! -z "$3" ]; then
+    if [ "$(echo "$3" | dd bs=1 count=1 2> /dev/null)" == "-" ]; then
+        declare -g targetYear="$(echo "$targetYear $3" | bc)"
+    else
+        declare -g targetYear="$3"
+    fi
+fi
+
 if [ ! -d '.cache' ]; then
     mkdir '.cache'
     rm '.cache/*.csv'
@@ -19,15 +37,17 @@ fi
 mkdir '.out'
 
 users=$( ( (eval "$(find '.cache/users.json' -amin -999 | grep -q .)" && cat '.cache/users.json')\
-    || (>&2 echo 'WARN: Could not load cached data, refreshing cache...'\
+    || (>&2 echo 'WARN: Could not load cached users, refreshing cache...'\
         && curl -su "bot:$(cat ../nc_api_bot_password.cred)" -H OCS-APIRequest:true -H Accept:application/json -X get https://warmulla.kaleidox.de/ocs/v1.php/cloud/users\
             | tee '.cache/users.json'))\
     | jq '.ocs.data.users[]')
 
 while read -r user; do
     >&2 echo "INFO: User $user"
-    ./createUserCsv.sh "$user" >> ".cache/$user.csv" || continue
+    ./createUserCsv.sh "$user" "$targetWeek" "$targetYear" >> ".cache/$user.csv" || rm -f ".cache/$user.csv"
 
-    >&2 echo "INFO: Creating PDF..."
-    ssconvert ".cache/$user.csv" ".out/$user.pdf"
+    if [ -f ".cache/$user.csv" ]; then
+      >&2 echo "INFO: Creating PDF..."
+      ssconvert ".cache/$user.csv" ".out/$user.pdf"
+    fi
 done < <(echo "$users" | jq -rc)
