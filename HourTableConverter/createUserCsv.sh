@@ -12,20 +12,23 @@ else
     declare -g user="$1"
 fi
 
-declare -g week=$(python common.py weekDate)
-#declare -g week=$(echo "from datetime import datetime; print(datetime.today().isocalendar().week)" | python)
+declare -g targetWeek="$(python common.py weekDate)"
 if [ ! -z "$2" ]; then
     if [ "$(echo "$2" | dd bs=1 count=1 2> /dev/null)" == "-" ]; then
-        declare -g week=$(echo "$week $2" | bc)
+        declare -g targetWeek="$(echo "$targetWeek $2" | bc)"
     else
-        declare -g week="$2"
+        declare -g targetWeek="$2"
     fi
 fi
-declare -g year=$(python common.py year)
-declare -g month=$(python common.py month)
 
-monthStr=$(python common.py monthstr)
-#monthStr=$(echo "print(['','Januar','Feburar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'][$month])" | python)
+declare -g targetYear="$(python common.py year)"
+if [ ! -z "$3" ]; then
+    if [ "$(echo "$3" | dd bs=1 count=1 2> /dev/null)" == "-" ]; then
+        declare -g targetYear="$(echo "$targetYear $3" | bc)"
+    else
+        declare -g targetYear="$3"
+    fi
+fi
 
 # load database
 data=$( ( (eval "$(find '.cache/data.json' -amin -1 | grep -q .)" && cat '.cache/data.json')\
@@ -36,14 +39,16 @@ data=$( ( (eval "$(find '.cache/data.json' -amin -1 | grep -q .)" && cat '.cache
     | jq 'sort_by((.data[] | select(.columnId == 7) | .value),(.data[] | select(.columnId == 9) | .value))')
 
 if [ "$(echo "$data" | jq -rc '.[]' | wc -l)" == "0" ]; then
-    >&2 echo 'INFO: No data found for the specified user and week'
+    >&2 echo 'INFO: No data found for the specified user and targetWeek'
     exit 1
 fi
 
 >&2 echo "INFO: Converting table to CSV..."
 
 # print csv table header
-echo "$user,$monthStr $year Woche $week,Von,Bis,Gesamt,Tag Gesamt,Dezimal"
+targetMonth="$(python common.py monthOfWeek "$targetWeek")"
+monthStr="$(python common.py monthstr "$targetMonth")"
+echo "$user,$monthStr $targetYear Woche $targetWeek,Von,Bis,Gesamt,Tag Gesamt,Dezimal"
 echo ','
 
 declare -g any=0
@@ -64,11 +69,12 @@ while read -r item; do
     day="$(python common.py parseDay "$date")"
     month="$(python common.py parseMonth "$date")"
     year="$(python common.py parseYear "$date")"
-    if [ "$week" != "$(python common.py week "$year" "$month" "$day")" ]; then continue; fi
+    if [ "$targetWeek" != "$(python common.py week "$year" "$month" "$day")" ]; then continue; fi
+    if [ "$targetYear" != "$year" ]; then continue; fi
 
     # if date changed:
     if [ "$date" != "$last" ]; then
-        dayTotal=$(format "$dayTotalDec")
+        dayTotal="$(format "$dayTotalDec")"
 
         if [ "$any" == 0 ]; then
             export any=1
@@ -79,8 +85,7 @@ while read -r item; do
         fi
 
         # todo: on newline, append wday combination
-        wday=$(python common.py weekday "$year" "$month" "$day")
-        #wday=$(echo "from datetime import datetime; print(['Mo','Di','Mi','Do','Fr','Sa','So'][datetime($year,$month,$day).weekday()])" | python)
+        wday="$(python common.py weekday "$year" "$month" "$day")"
         echo -n "$wday $day,"
     else
         # else empty newline without wday combination
@@ -89,17 +94,17 @@ while read -r item; do
     fi
     export last="$date"
 
-    customer=$(echo "$item" | jq -r '.data[] | select(.columnId == 8) | .value')
-    start=$(echo "$item" | jq -r '.data[] | select(.columnId == 9) | .value')
-    end=$(echo "$item" | jq -r '.data[] | select(.columnId == 10) | .value')
+    customer="$(echo "$item" | jq -r '.data[] | select(.columnId == 8) | .value')"
+    start="$(echo "$item" | jq -r '.data[] | select(.columnId == 9) | .value')"
+    end="$(echo "$item" | jq -r '.data[] | select(.columnId == 10) | .value')"
 
     echo -n "$customer,"
 
     calcDecimal() {
         if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: decimal $1"; fi
         # obtain hours and minutes
-        hours=$(echo "$1" | sed 's/\(.*\):.*/\1/')
-        minutes=$(echo "$1" | sed 's/.*:\(.*\)/\1/')
+        hours="$(echo "$1" | sed 's/\(.*\):.*/\1/')"
+        minutes="$(echo "$1" | sed 's/.*:\(.*\)/\1/')"
         echo "scale=2; $hours + (0.25 * ($minutes / 15))" | bc
     }
 
@@ -107,16 +112,16 @@ while read -r item; do
         if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: block $1 - $2"; fi
 
         # calculate decimal hours each
-        startDec=$(calcDecimal "$1")
-        endDec=$(calcDecimal "$2")
+        startDec="$(calcDecimal "$1")"
+        endDec="$(calcDecimal "$2")"
 
         if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: end $endDec start $startDec"; fi
 
         # calculate delta time (as total time)
-        totalDec=$(echo "scale=2; $endDec - $startDec" | bc)
+        totalDec="$(echo "scale=2; $endDec - $startDec" | bc)"
         if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: dayTotalDec before update=$dayTotalDec"; fi
-        declare -g dayTotalDec=$(echo "scale=2; $dayTotalDec + $totalDec" | bc)
-        declare -g totalHoursDec=$(echo "scale=2; $totalHoursDec + $totalDec" | bc)
+        declare -g dayTotalDec="$(echo "scale=2; $dayTotalDec + $totalDec" | bc)"
+        declare -g totalHoursDec="$(echo "scale=2; $totalHoursDec + $totalDec" | bc)"
         if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: dayTotalDec after update=$dayTotalDec"; fi
         totalFormatted=$(format "$totalDec")
 
@@ -124,7 +129,7 @@ while read -r item; do
     }
 
     # split at break and foreach before and after, do the following:
-    breakMultiplier=$(echo "$item" | jq -r '.data[] | select(.columnId == 13) | .value')
+    breakMultiplier="$(echo "$item" | jq -r '.data[] | select(.columnId == 13) | .value')"
     if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: breakMultiplier $breakMultiplier"; fi
 
     if [ -z "$breakMultiplier" ] || [ "$breakMultiplier" -eq "0" ]; then
@@ -132,25 +137,25 @@ while read -r item; do
         appendTimeblock "$start" "$end"
     else
         # else split into two entries
-        breakStart=$(echo "$item" | jq -r '.data[] | select(.columnId == 22) | .value')
-        breakStartDec=$(calcDecimal "$breakStart")
+        breakStart="$(echo "$item" | jq -r '.data[] | select(.columnId == 22) | .value')"
+        breakStartDec="$(calcDecimal "$breakStart")"
 
         appendTimeblock "$start" "$breakStart"
 
         echo ''
         echo -n ",,"
-        breakEndDec=$(echo "scale=2; $breakStartDec + (0.25 * $breakMultiplier)" | bc)
-        breakEndFormatted=$(format "$breakEndDec")
+        breakEndDec="$(echo "scale=2; $breakStartDec + (0.25 * $breakMultiplier)" | bc)"
+        breakEndFormatted="$(format "$breakEndDec")"
         appendTimeblock "$breakEndFormatted" "$end"
     fi
-    declare -g count=$(echo "$count + 1" | bc)
+    declare -g count="$(echo "$count + 1" | bc)"
 done < <(echo "$data" | jq -c '.[]')
 
-dayTotal=$(format "$dayTotalDec")
+dayTotal="$(format "$dayTotalDec")"
 echo ",$dayTotal,$dayTotalDec"
 
 echo ','
 echo ",,,,,,$totalHoursDec"
 
 echo ''
->&2 echo "INFO: Parsing CSV for user $user and week $week successful; processed $count out of $(echo "$data" | jq -c '.[]' | wc -l) entries"
+>&2 echo "INFO: Parsing CSV for user $user and targetWeek $targetWeek successful; processed $count out of $(echo "$data" | jq -c '.[]' | wc -l) entries"

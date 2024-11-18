@@ -41,5 +41,6 @@ users=$( ( (eval "$(find '.cache/users.json' -amin -999 | grep -q .)" && cat '.c
     | jq '.ocs.data.users[]')
 
 while read -r user; do
+  if [ ! -f ".out/$user.pdf" ]; then continue; fi
   curl -u "bot:$(cat '../nc_api_bot_password.cred')" -H OCS-APIRequest:true --upload-file ".out/$user.pdf" -X PUT "https://warmulla.kaleidox.de/remote.php/dav/files/bot/Stunden%20$year/Kalenderwoche%20$week/$user.pdf"
 done < <(echo "$users" | jq -rc)

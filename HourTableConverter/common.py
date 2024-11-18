@@ -1,5 +1,5 @@
 import sys
-from datetime import (datetime)
+from datetime import datetime, timedelta
 
 
 def week(year, month, day):
@@ -10,22 +10,26 @@ def weekDate(date=datetime.today()):
     print(date.isocalendar().week)
 
 
-def month():
-    print(datetime.today().month)
-
-
-def year():
-    print(datetime.today().year)
-
-
 def weekday(year, month, day):
     print(['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][datetime(int(year), int(month), int(day)).weekday()])
+
+
+def monthOfWeek(week, year=datetime.today().year):
+    print((datetime(int(year), 1, 1) + timedelta(days=(int(week) - 1) * 7 + 3)).month)
+
+
+def month():
+    print(datetime.today().month)
 
 
 def monthstr(month=datetime.today().month):
     print(
         ['', 'Januar', 'Feburar', 'März', 'April', 'Mai', 'Juni', 'Juli', 'August', 'September', 'Oktober', 'November',
          'Dezember'][int(month)])
+
+
+def year():
+    print(datetime.today().year)
 
 
 def format(timeDec):
@@ -52,5 +56,7 @@ if argc == 0:
     call()
 if argc == 1:
     call(sys.argv[2])
+if argc == 2:
+    call(sys.argv[2], sys.argv[3])
 if argc == 3:
     call(sys.argv[2], sys.argv[3], sys.argv[4])
