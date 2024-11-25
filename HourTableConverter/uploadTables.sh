@@ -27,7 +27,8 @@ curl -su "bot:$(cat '../nc_api_bot_password.cred')" -H OCS-APIRequest:true -X MK
   && (curl -su "bot:$(cat '../nc_api_bot_password.cred')" -H OCS-APIRequest:true -X MKCOL -X POST 'https://warmulla.kaleidox.de/ocs/v2.php/apps/files_sharing/api/v1/shares'\
      -d "path=/Stunden%20$targetYear"\
      -d 'shareType=1'\
-     -d 'shareWith=admin'\
+     -d 'shareWith=Stundeneinsicht'\
+     -d 'attributes=%5B%7B%22scope%22%3A%22permissions%22%2C%22key%22%3A%22download%22%2C%22value%22%3Atrue%7D%5D'\
      -d 'permissions=17' 1> /dev/null 2> /dev/null)\
   || >&2 echo "Doesnt matter, likely exists already"
 curl -su "bot:$(cat '../nc_api_bot_password.cred')" -H OCS-APIRequest:true -X MKCOL "https://warmulla.kaleidox.de/remote.php/dav/files/bot/Stunden%20$targetYear/Kalenderwoche%20$targetWeek" 2> /dev/null | xq\
