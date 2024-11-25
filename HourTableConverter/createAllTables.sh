@@ -29,7 +29,7 @@ fi
 
 if [ ! -d '.cache' ]; then
     mkdir '.cache'
-    rm '.cache/*.csv'
+    rm '.cache/**'
 fi
 if [ -d '.out' ]; then
     rm -rf '.out'
@@ -48,6 +48,8 @@ while read -r user; do
 
     if [ -f ".cache/$user.csv" ]; then
       >&2 echo "INFO: Creating PDF..."
-      ssconvert ".cache/$user.csv" ".out/$user.pdf"
+      column -s, -t < ".cache/$user.csv" > ".cache/$user.txt"
+      enscript -B -p ".cache/$user.ps" -r ".cache/$user.txt"
+      ps2pdf ".cache/$user.ps" ".out/$user.pdf"
     fi
 done < <(echo "$users" | jq -rc)
