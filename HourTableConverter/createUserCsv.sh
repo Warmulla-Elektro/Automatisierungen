@@ -139,14 +139,19 @@ while read -r item; do
         # else split into two entries
         breakStart="$(echo "$item" | jq -r '.data[] | select(.columnId == 22) | .value')"
         breakStartDec="$(calcDecimal "$breakStart")"
-
-        appendTimeblock "$start" "$breakStart"
-
-        echo ''
-        echo -n ",,"
         breakEndDec="$(echo "scale=2; $breakStartDec + (0.25 * $breakMultiplier)" | bc)"
         breakEndFormatted="$(format "$breakEndDec")"
-        appendTimeblock "$breakEndFormatted" "$end"
+
+        if [ ! "$start" == "$breakStart" ]; then
+          appendTimeblock "$start" "$breakStart"
+        fi
+        if [ ! "$breakEndFormatted" == "$end" ]; then
+          if [ ! "$start" == "$breakStart" ]; then
+            echo ''
+            echo -n ",,"
+          fi
+          appendTimeblock "$breakEndFormatted" "$end"
+        fi
     fi
     declare -g count="$(echo "$count + 1" | bc)"
 done < <(echo "$data" | jq -c '.[]')
