@@ -2,5 +2,5 @@ git pull -f
 
 (
   cd HourTableConverter || exit 1
-  ./run.sh
+  ./run.sh 2>&1
 )
