@@ -47,8 +47,7 @@ fi
 
 # print csv table header
 targetMonth="$(python common.py monthOfWeek "$targetWeek")"
-monthStr="$(python common.py monthstr "$targetMonth")"
-echo "$user,$monthStr $targetYear Woche $targetWeek,Von,Bis,Gesamt,Tag Gesamt,Dezimal"
+echo "$user,Rg.Nr.,$targetYear Woche $targetWeek,Von,Bis,Gesamt,Tag Gesamt,Dezimal,Bemerkungen"
 echo ','
 
 declare -g any=0
@@ -71,6 +70,7 @@ while read -r item; do
     year="$(python common.py parseYear "$date")"
     if [ "$targetWeek" != "$(python common.py week "$year" "$month" "$day")" ]; then continue; fi
     if [ "$targetYear" != "$year" ]; then continue; fi
+    details="$(echo "$item" | jq -r '.data[] | select(.columnId == 23) | .value')"
 
     # if date changed:
     if [ "$date" != "$last" ]; then
@@ -79,17 +79,17 @@ while read -r item; do
         if [ "$any" == 0 ]; then
             export any=1
         else
-            echo ",$dayTotal,$dayTotalDec"
+            echo ",$dayTotal,$dayTotalDec,$details"
             declare -g dayTotalDec='0.00'
             if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: Resetting dayTotalDec to 0.00"; fi
         fi
 
         # todo: on newline, append wday combination
         wday="$(python common.py weekday "$year" "$month" "$day")"
-        echo -n "$wday $day,"
+        echo -n "$wday $day.$month.,"
     else
-        # else empty newline without wday combination
-        echo ''
+        # else newline without wday combination
+        echo ",,,$details"
         echo -n ','
     fi
     export last="$date"
@@ -98,7 +98,7 @@ while read -r item; do
     start="$(echo "$item" | jq -r '.data[] | select(.columnId == 9) | .value')"
     end="$(echo "$item" | jq -r '.data[] | select(.columnId == 10) | .value')"
 
-    echo -n "$customer,"
+    echo -n ",$customer,"
 
     calcDecimal() {
         if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: decimal $1"; fi
@@ -148,7 +148,7 @@ while read -r item; do
         if [ ! "$breakEndFormatted" == "$end" ]; then
           if [ ! "$start" == "$breakStart" ]; then
             echo ''
-            echo -n ",,"
+            echo -n ",,,"
           fi
           appendTimeblock "$breakEndFormatted" "$end"
         fi
@@ -160,7 +160,7 @@ dayTotal="$(format "$dayTotalDec")"
 echo ",$dayTotal,$dayTotalDec"
 
 echo ','
-echo ",,,,,,$totalHoursDec"
+echo ",,,,,Wochenstunden Gesamt:,$totalHoursDec"
 
 echo ''
 if [ "$count" == "0" ]; then
