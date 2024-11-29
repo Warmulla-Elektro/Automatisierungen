@@ -17,5 +17,5 @@ if [ ! -z "$2" ]; then
     fi
 fi
 
-./createAllTables.sh reload "$targetWeek" "$targetYear"
+./createAllTables.sh - "$targetWeek" "$targetYear"
 ./uploadTables.sh "$targetWeek" "$targetYear"
