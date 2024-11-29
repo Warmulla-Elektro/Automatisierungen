@@ -159,8 +159,7 @@ done < <(echo "$data" | jq -c '.[]')
 dayTotal="$(format "$dayTotalDec")"
 echo ",$dayTotal,$dayTotalDec"
 
-echo ','
-echo ",,,,,Wochenstunden Gesamt:,$totalHoursDec"
+echo ",,,,,,,Wochenstunden Gesamt:,$totalHoursDec"
 
 echo ''
 if [ "$count" == "0" ]; then
