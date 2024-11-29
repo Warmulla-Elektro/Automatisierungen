@@ -47,9 +47,10 @@ while read -r user; do
     ./createUserCsv.sh "$user" "$targetWeek" "$targetYear" >> ".cache/$user.csv" || rm -f ".cache/$user.csv"
 
     if [ -f ".cache/$user.csv" ]; then
-      >&2 echo "INFO: Creating PDF..."
-      column -s, -t < ".cache/$user.csv" > ".cache/$user.txt"
-      enscript -B -p ".cache/$user.ps" -r ".cache/$user.txt"
-      ps2pdf ".cache/$user.ps" ".out/$user.pdf"
+      >&2 echo "INFO: Creating XLSX..."
+      libreoffice --headless -convert-to ods ".cache/$user.csv" --outdir .out
+      #column -s, -t < ".cache/$user.csv" > ".cache/$user.txt"
+      #enscript -B -p ".cache/$user.ps" -r ".cache/$user.txt"
+      #ps2pdf ".cache/$user.ps" ".out/$user.pdf"
     fi
 done < <(echo "$users" | jq -rc)

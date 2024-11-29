@@ -34,7 +34,7 @@ curl -su "bot:$(cat '../nc_api_bot_password.cred')" -H OCS-APIRequest:true -X MK
 curl -su "bot:$(cat '../nc_api_bot_password.cred')" -H OCS-APIRequest:true -X MKCOL "https://warmulla.kaleidox.de/remote.php/dav/files/bot/Stunden%20$targetYear/Kalenderwoche%20$targetWeek" 2> /dev/null | xq\
   || >&2 echo "Doesnt matter, likely exists already"
 
->&2 echo "INFO: Uploading PDF files..."
+>&2 echo "INFO: Uploading files..."
 
 users=$( ( (eval "$(find '.cache/users.json' -amin -999 | grep -q .)" && cat '.cache/users.json')\
     || (>&2 echo 'WARN: Could not load cached users, refreshing cache...'\
@@ -43,6 +43,6 @@ users=$( ( (eval "$(find '.cache/users.json' -amin -999 | grep -q .)" && cat '.c
     | jq '.ocs.data.users[]')
 
 while read -r user; do
-  if [ ! -f ".out/$user.pdf" ]; then continue; fi
-  curl -u "bot:$(cat '../nc_api_bot_password.cred')" -H OCS-APIRequest:true --upload-file ".out/$user.pdf" -X PUT "https://warmulla.kaleidox.de/remote.php/dav/files/bot/Stunden%20$targetYear/Kalenderwoche%20$targetWeek/$user.pdf"
+  if [ ! -f ".out/$user.ods" ]; then continue; fi
+  curl -u "bot:$(cat '../nc_api_bot_password.cred')" -H OCS-APIRequest:true --upload-file ".out/$user.ods" -X PUT "https://warmulla.kaleidox.de/remote.php/dav/files/bot/Stunden%20$targetYear/Kalenderwoche%20$targetWeek/$user.ods"
 done < <(echo "$users" | jq -rc)
