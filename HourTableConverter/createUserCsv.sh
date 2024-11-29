@@ -76,7 +76,7 @@ while read -r item; do
     if [ "$date" != "$last" ]; then
         dayTotal="$(format "$dayTotalDec")"
 
-        if [ "$any" == 0 ]; then
+        if [[ "$any" == 0 || "$vacation" == 'true' ]]; then
             export any=1
         else
             echo ",$dayTotal,$dayTotalDec,$details"
@@ -86,19 +86,35 @@ while read -r item; do
 
         # todo: on newline, append wday combination
         wday="$(python common.py weekday "$year" "$month" "$day")"
-        echo -n "$wday $day.$month.,"
+        echo -n "$wday $day.$month.,,"
     else
         # else newline without wday combination
         echo ",,,$details"
-        echo -n ','
+        echo -n ',,'
     fi
     export last="$date"
 
     customer="$(echo "$item" | jq -r '.data[] | select(.columnId == 8) | .value')"
     start="$(echo "$item" | jq -r '.data[] | select(.columnId == 9) | .value')"
     end="$(echo "$item" | jq -r '.data[] | select(.columnId == 10) | .value')"
+    vacation="$(echo "$item" | jq -r '.data[] | select(.columnId == 75) | .value')"
 
-    echo -n ",$customer,"
+    if [ "$vacation" == 'true' ]; then
+      if [ ! -z "$customer" ]; then
+        declare -g vacationText="$customer"
+      fi
+      if [ ! -z "$details" ]; then
+        declare -g vacationText="$details"
+      fi
+      if [ -z "$vacationText" ]; then
+        echo "Freier Tag,,,,,,Kein Grund für Freistellung angegeben"
+      else
+        echo "$vacationText"
+      fi
+      continue
+    fi
+
+    echo -n "$customer,"
 
     calcDecimal() {
         if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: decimal $1"; fi
