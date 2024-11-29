@@ -17,5 +17,6 @@ if [ ! -z "$2" ]; then
     fi
 fi
 
+./cleanup.sh # todo: .cache/data.json should be the entire table, not just each week
 ./createAllTables.sh - "$targetWeek" "$targetYear"
 ./uploadTables.sh "$targetWeek" "$targetYear"
