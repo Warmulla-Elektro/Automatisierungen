@@ -141,7 +141,7 @@ while read -r item; do
         if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: dayTotalDec after update=$dayTotalDec"; fi
         totalFormatted=$(format "$totalDec")
 
-        echo -n "$1,$2,$totalFormatted"
+        echo -n " $1, $2, $totalFormatted"
     }
 
     # split at break and foreach before and after, do the following:
