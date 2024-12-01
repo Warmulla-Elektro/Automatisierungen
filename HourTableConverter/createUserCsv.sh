@@ -70,7 +70,6 @@ while read -r item; do
     year="$(python common.py parseYear "$date")"
     if [ "$targetWeek" != "$(python common.py week "$year" "$month" "$day")" ]; then continue; fi
     if [ "$targetYear" != "$year" ]; then continue; fi
-    details="$(echo "$item" | jq -r '.data[] | select(.columnId == 23) | .value')"
 
     # if date changed:
     if [ "$date" != "$last" ]; then
@@ -92,6 +91,7 @@ while read -r item; do
         echo ",,,$details"
         echo -n ',,'
     fi
+    declare -g details="$(echo "$item" | jq -r '.data[] | select(.columnId == 23) | .value')"
     export last="$date"
 
     customer="$(echo "$item" | jq -r '.data[] | select(.columnId == 8) | .value')"
@@ -141,7 +141,7 @@ while read -r item; do
         if [ "$DEBUG" == "true" ]; then >&2 echo "DEBUG: dayTotalDec after update=$dayTotalDec"; fi
         totalFormatted=$(format "$totalDec")
 
-        echo -n " $1, $2, $totalFormatted"
+        echo -n "$1,$2,$totalFormatted"
     }
 
     # split at break and foreach before and after, do the following:
@@ -173,7 +173,7 @@ while read -r item; do
 done < <(echo "$data" | jq -c '.[]')
 
 dayTotal="$(format "$dayTotalDec")"
-echo ",$dayTotal,$dayTotalDec"
+echo ",$dayTotal,$dayTotalDec,$details"
 
 echo ",,,,,,Wochenstunden Gesamt:,$totalHoursDec"
 
