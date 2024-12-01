@@ -47,7 +47,7 @@ while read -r user; do
     ./createUserCsv.sh "$user" "$targetWeek" "$targetYear" >> ".cache/$user.csv" || rm -f ".cache/$user.csv"
 
     if [ -f ".cache/$user.csv" ]; then
-      >&2 echo "INFO: Creating XLSX..."
+      >&2 echo "INFO: Converting CSV..."
       libreoffice --headless --convert-to ods --infilter="CSV:44,34,0,0,4/2/5/2/6/2/7/2" ".cache/$user.csv" --outdir .out
       #column -s, -t < ".cache/$user.csv" > ".cache/$user.txt"
       #enscript -B -p ".cache/$user.ps" -r ".cache/$user.txt"
