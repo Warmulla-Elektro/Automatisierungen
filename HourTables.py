@@ -1,10 +1,10 @@
 import argparse
-import csv
 import json
 import os
 import time
 from datetime import datetime, timedelta
 from enum import Enum
+from typing import IO
 
 import pandas
 import requests
@@ -13,11 +13,11 @@ from odf.table import Table, TableRow, TableCell
 from odf.text import P
 
 global dayTotalDec
-dayTotalDec=0.0
 
 
 def weekday(datetime=datetime.today()):
     return ['Mo', 'Di', 'Mi', 'Do', 'Fr', 'Sa', 'So'][datetime.weekday()]
+
 
 def parse_arguments():
     def parseDatetime(str):
@@ -96,45 +96,52 @@ def load_data(force_reload: bool = False, cacheFile='.cache/data.json'):
     return entries
 
 
-def generate_csv(data: any, outputFile):
+def generate_csv(data: any, out: IO):
     global dayTotalDec
 
-    with open(outputFile, 'w') as out:
-        out.writelines([f'{user},Rg.Nr.,{year} Woche {week},Von,Bis,Gesamt,Tag Gesamt,Dezimal,Bemerkungen', ','])
+    out.writelines([f'{user},Rg.Nr.,{year} Woche {week},Von,Bis,Gesamt,Tag Gesamt,Dezimal,Bemerkungen', ','])
 
-        def write_timeblock(entry, start, end, print_customer=True, last=True):
-            def decimal(time): return time.hours + (time.minutes / 60.0)
+    def write_timeblock(entry, start, end, print_customer=True, first=True, last=True):
+        global dayTotalDec
 
-            def format(timeDec):
-                hours = int(float(timeDec))
-                minutes = (float(timeDec) - hours) * 60
-                return f"{hours:02}:{int(minutes):02}"
+        def format(timeDec):
+            hours = int(float(timeDec))
+            minutes = (float(timeDec) - hours) * 60
+            return f"{hours:02}:{int(minutes):02}"
 
-            total = end - start
-            dayTotal = ''
-            dayTotalDec += total
-            if last: dayTotal = format(dayTotalDec)
-            out.writelines(
-                f'{weekday(entry.date)} {entry.date.strftime('%d.%m.')},,{entry.customer},{start},{end},{total},{dayTotal},{dayTotalDec},{entry.details}')
+        total = end - start
+        dayTotal = ''
+        dayTotalDec += total
+        if last: dayTotal = format(dayTotalDec)
+        if first:
+            date_str = f'{weekday(entry.date)} {entry.date.strftime('%d.%m.')}'
+        else:
+            date_str = ''
+        if print_customer:
+            customer = entry.customer
+        else:
+            customer = ''
+        out.writelines(
+            f'{date_str},,{customer},{start},{end},{total},{dayTotal},{dayTotalDec},{entry.details}')
 
-        sorted(data, key=lambda it: (it.date, it.startTime))
+    sorted(data, key=lambda it: (it.date, it.startTime))
 
-        for i in range(0, len(data)):
-            entry = data[i]
-            last = False
-            next = data[i + 1]
-            if next and next.date != entry.date: last = True
-            if entry.breakMultiplier == 0:
-                write_timeblock(entry, data.startTime, data.endTime, last=last)
-            else:
-                breakEnd = data.breakStart + timedelta(minutes=15 * data.breakMultiplier)
-                write_timeblock(entry, data.startTime, data.breakStart, last=last)
-                write_timeblock(entry, breakEnd, data.endTime, False, last)
-            if last: dayTotalDec = 0.0
+    for i in range(0, len(data)):
+        entry = data[i]
+        last = False
+        next = data[i + 1]
+        if next and next.date != entry.date: last = True
+        if entry.breakMultiplier == 0:
+            write_timeblock(entry, data.startTime, data.endTime, last=last)
+        else:
+            breakEnd = data.breakStart + timedelta(minutes=15 * data.breakMultiplier)
+            write_timeblock(entry, data.startTime, data.breakStart, last=last)
+            write_timeblock(entry, breakEnd, data.endTime, False, last)
+        if last: dayTotalDec = 0.0
 
 
-def convert_to_ods(inputFile, outputFile):
-    dataframe=pandas.read_csv(inputFile)
+def convert_to_ods(input: IO, output: IO):
+    dataframe = pandas.read_csv(input)
     ods = OpenDocumentSpreadsheet()
     table = Table(name=f'Kalenderwoche {week}')
     ods.spreadsheet.addElement(table)
@@ -146,10 +153,10 @@ def convert_to_ods(inputFile, outputFile):
             tr.addElement(tc)
             tc.addElement(P(text=str(cell)))
 
-    ods.save(outputFile)
+    ods.write(output)
 
 
-def upload_file(inputFile, uploadPath): print()  # todo
+def upload_file(input: IO, uploadPath): print()  # todo
 
 
 password = load_password()
@@ -198,8 +205,11 @@ for user in users:
 
         # run per-user tasks
         if args.c or args.o or args.u:
-            generate_csv(userdata, f'.cache/{user}.csv')
+            with open(f'.cache/{user}.csv', 'w') as user_csv:
+                generate_csv(userdata, user_csv)
         if args.o or args.u:
-            convert_to_ods(f'.cache/{user}.csv', f'.out/{user}.ods')
+            with open(f'.cache/{user}.csv', 'r') as user_csv, open(f'.out/{user}.ods', 'w') as user_ods:
+                convert_to_ods(user_csv, user_ods)
         if args.u:
-            upload_file(f'.out/{user}.ods', f'Stunden {year}/Kalenderwoche {week}/{user}.ods')
+            with open(f'.out/{user}.ods', 'r') as user_ods:
+                upload_file(user_ods, f'Stunden {year}/Kalenderwoche {week}/{user}.ods')
