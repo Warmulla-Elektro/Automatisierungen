@@ -12,7 +12,8 @@ from odf.opendocument import OpenDocumentSpreadsheet
 from odf.table import Table, TableRow, TableCell
 from odf.text import P
 
-global dayTotal
+global dayTotalDec
+dayTotalDec=0.0
 
 
 def weekday(datetime=datetime.today()):
@@ -96,6 +97,8 @@ def load_data(force_reload: bool = False, cacheFile='.cache/data.json'):
 
 
 def generate_csv(data: any, outputFile):
+    global dayTotalDec
+
     with open(outputFile, 'w') as out:
         out.writelines([f'{user},Rg.Nr.,{year} Woche {week},Von,Bis,Gesamt,Tag Gesamt,Dezimal,Bemerkungen', ','])
 
@@ -105,14 +108,12 @@ def generate_csv(data: any, outputFile):
             def format(timeDec):
                 hours = int(float(timeDec))
                 minutes = (float(timeDec) - hours) * 60
-                print(f"{hours:02}:{int(minutes):02}")
+                return f"{hours:02}:{int(minutes):02}"
 
             total = end - start
-            dayTotal += total
-            dayTotalDec = ''
-            if last:
-                dayTotalDec = decimal(end) - decimal(start)
-                dayTotal = format(dayTotalDec)
+            dayTotal = ''
+            dayTotalDec += total
+            if last: dayTotal = format(dayTotalDec)
             out.writelines(
                 f'{weekday(entry.date)} {entry.date.strftime('%d.%m.')},,{entry.customer},{start},{end},{total},{dayTotal},{dayTotalDec},{entry.details}')
 
@@ -129,7 +130,7 @@ def generate_csv(data: any, outputFile):
                 breakEnd = data.breakStart + timedelta(minutes=15 * data.breakMultiplier)
                 write_timeblock(entry, data.startTime, data.breakStart, last=last)
                 write_timeblock(entry, breakEnd, data.endTime, False, last)
-            if last: dayTotal = 0
+            if last: dayTotalDec = 0.0
 
 
 def convert_to_ods(inputFile, outputFile):
