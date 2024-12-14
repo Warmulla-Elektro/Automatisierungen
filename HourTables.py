@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import sys
 import time
 from datetime import datetime, timedelta
 from enum import Enum
@@ -13,6 +14,32 @@ from odf.table import Table, TableRow, TableCell
 from odf.text import P
 
 global dayTotalDec
+
+if not os.path.isdir('.cache'): os.mkdir('.cache')
+if not os.path.isdir('.out'): os.mkdir('.out')
+
+
+class MultiOutput(IO):
+    @staticmethod
+    def wrap(out: IO):
+        if args.p:
+            return MultiOutput(out, sys.stdout)
+        return out
+
+    def __init__(self, *streams):
+        self.streams = streams
+
+    def write(self, data):
+        for stream in self.streams:
+            stream.write(data)
+
+    def flush(self):
+        for stream in self.streams:
+            stream.flush()
+
+    def close(self):
+        for stream in self.streams:
+            stream.close()
 
 
 def weekday(datetime=datetime.today()):
@@ -38,12 +65,13 @@ def parse_arguments():
     parser.add_argument('-c', action='store_true', help='Generate CSV')
     parser.add_argument('-o', action='store_true', help='Convert to ODS format; implies -c')
     parser.add_argument('-u', action='store_true', help='Upload File; implies -o')
+    parser.add_argument('-p', action='store_true', help='Print everything to STDOUT as well as to file')
     parser.add_argument('-v', action='store_true', help='Verbose Logging')
     return parser.parse_args()
 
 
-def load_password(path='nc_api_bot_pasword.cred'):
-    if ~os.path.exists(path):
+def load_password(path='nc_api_bot_password.cred'):
+    if not os.path.exists(path):
         print('No password defined. Please create ' + path)
         exit(1)
     with open(path) as pwf:
@@ -51,7 +79,7 @@ def load_password(path='nc_api_bot_pasword.cred'):
 
 
 def load_data(force_reload: bool = False, cacheFile='.cache/data.json'):
-    if (~force_reload
+    if (not force_reload
             and (os.path.exists(cacheFile)
                  and datetime.fromtimestamp(os.stat(cacheFile).st_mtime) > (
                          datetime.now() - timedelta(hours=1)))):
@@ -79,10 +107,10 @@ def load_data(force_reload: bool = False, cacheFile='.cache/data.json'):
 
     entries = []
     for entry in data:
-        convert = {user: entry.createdBy}
+        convert = {'user': entry['createdBy']}
 
         for column in TableColumn:
-            value = map(lambda p: p.value, filter(lambda p: p.columnId == column.value, entry.data))
+            value = map(lambda p: p['value'], filter(lambda p: p.columnId == column.value, entry['data']))
             parse = lambda it: it
             if column == TableColumn.date: parse = lambda str: datetime.strptime(str, '%Y-%m-%d')
             if column == TableColumn.startTime: parse = lambda str: time.strptime(str, '%H:%M')
@@ -114,15 +142,15 @@ def generate_csv(data: any, out: IO):
         dayTotalDec += total
         if last: dayTotal = format(dayTotalDec)
         if first:
-            date_str = f'{weekday(entry.date)} {entry.date.strftime('%d.%m.')}'
+            date_str = f'{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')}'
         else:
             date_str = ''
         if print_customer:
-            customer = entry.customer
+            customer = entry['customer']
         else:
             customer = ''
         out.writelines(
-            f'{date_str},,{customer},{start},{end},{total},{dayTotal},{dayTotalDec},{entry.details}')
+            f'{date_str},,{customer},{start},{end},{total},{dayTotal},{dayTotalDec},{entry['details']}')
 
     sorted(data, key=lambda it: (it.date, it.startTime))
 
@@ -130,8 +158,8 @@ def generate_csv(data: any, out: IO):
         entry = data[i]
         last = False
         next = data[i + 1]
-        if next and next.date != entry.date: last = True
-        if entry.breakMultiplier == 0:
+        if next and next.date != entry['date']: last = True
+        if entry['breakMultiplier'] == 0:
             write_timeblock(entry, data.startTime, data.endTime, last=last)
         else:
             breakEnd = data.breakStart + timedelta(minutes=15 * data.breakMultiplier)
@@ -163,7 +191,7 @@ password = load_password()
 
 # load data
 args = parse_arguments()
-data = load_data(args.get('S'))
+data = load_data(args.S)
 
 # for each user
 if args.users:
@@ -205,8 +233,8 @@ for user in users:
 
         # run per-user tasks
         if args.c or args.o or args.u:
-            with open(f'.cache/{user}.csv', 'w') as user_csv:
-                generate_csv(userdata, user_csv)
+            with open(f'.cache/{user}.csv', 'w') as user_csv, MultiOutput.wrap(user_csv) as wrap:
+                generate_csv(userdata, wrap)
         if args.o or args.u:
             with open(f'.cache/{user}.csv', 'r') as user_csv, open(f'.out/{user}.ods', 'w') as user_ods:
                 convert_to_ods(user_csv, user_ods)
