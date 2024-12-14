@@ -2,3 +2,5 @@
 *.pdf
 *.cred
 .idea/
+.cache/
+.out
