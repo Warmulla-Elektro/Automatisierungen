@@ -114,7 +114,8 @@ def load_data(force_reload: bool = False, cache_file='.cache/data.json'):
 def generate_csv(data: any, out: IO):
     global dayTotalDec
 
-    out.writelines([f'{user},Rg.Nr.,{year} Woche {week},Von,Bis,Gesamt,Tag Gesamt,Dezimal,Bemerkungen', ','])
+    out.write(f'{user},Rg.Nr.,{year} Woche {week},Von,Bis,Gesamt,Tag Gesamt,Dezimal,Bemerkungen\n')
+    out.write(',\n')
 
     def write_timeblock(entry, start: timedelta, end: timedelta, print_customer=True, first=True, last=True):
         global dayTotalDec
@@ -139,8 +140,7 @@ def generate_csv(data: any, out: IO):
             customer = entry['customer']
         else:
             customer = ''
-        out.writelines(
-            f'{date_str},,{customer},{start},{end},{total},{dayTotal},{dayTotalDec},{entry['details']}')
+        out.write(f'{date_str},,{customer},{start},{end},{total},{dayTotal},{dayTotalDec},{entry['details']}\n')
 
     sorted(data, key=lambda it: (it['date'], it['startTime']))
     data = list(data)
@@ -148,11 +148,13 @@ def generate_csv(data: any, out: IO):
     for i in range(0, len(data)):
         entry = data[i]
         if entry['vacation']:
-            if entry['details']:
+            if entry['customer']:
+                reason = entry['customer']
+            elif entry['details']:
                 reason = entry['details']
             else:
-                reason = entry['customer']
-            out.writelines(f'{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')},,{reason}')
+                reason = 'Freier Tag (kein Grund angegeben)'
+            out.write(f'{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')},,{reason}\n')
             continue
         last = False
         if i + 1 < len(data):
