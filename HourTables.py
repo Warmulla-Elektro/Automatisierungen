@@ -199,16 +199,13 @@ else:
 for user in users:
     userdata = filter(lambda e: e['user'] == user, data)
 
-    # for each week in timerange
     if args.year:
         userdata = filter(lambda e: e['year'] >= args.year, userdata)
         year = args.year
     else:
         year = datetime.today().year
-    if args.month: userdata = filter(lambda e: e['month'] >= args.month, userdata)
-    if args.week:
-        weeks = [args.week]
-        userdata = filter(lambda e: e['week'] >= args.week, userdata)
+    if args.month:
+        userdata = filter(lambda e: e['month'] >= args.month, userdata)
     elif args.since:
         # week range
         start = datetime.strptime(args.since, '%d-%m-%Y').isocalendar().week
@@ -219,7 +216,7 @@ for user in users:
     userdata = list(userdata)
 
     for week in weeks:
-        weekdata = userdata
+        weekdata = filter(lambda e: e['date'].isocalendar().week == week, userdata)
 
         # apply filters
         if args.since:
@@ -236,7 +233,7 @@ for user in users:
             with open(f'.cache/{user}.csv', 'w') as user_csv:
                 generate_csv(weekdata, user_csv)
         if args.p and os.path.exists(f'.cache/{user}.csv'):
-            with open(f'.cache/{user}.csv', 'w') as buf:
+            with open(f'.cache/{user}.csv', 'r') as buf:
                 print(buf.read())
         elif args.p:
             sys.stderr.writelines('Could not read generated CSV data')
