@@ -1,7 +1,2 @@
 git pull -f
-
-(
-  cd HourTableConverter || exit 1
-  ./cleanup.sh
-  ./run.sh
-)
+python HourTables.py -u
