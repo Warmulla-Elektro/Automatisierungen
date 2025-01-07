@@ -93,11 +93,10 @@ def load_data(force_reload: bool = False, cache_file='.cache/data.json'):
             f0 = filter(lambda p: p['columnId'] == column.value, entry['data'])
             f1 = map(lambda p: p['value'], f0)
             f2 = list(f1)
-            if len(f2) == 0 or isinstance(f2[0], NoneType):
+            if len(f2) == 0 or isinstance(f2[0], NoneType) or f2[0] == "":
                 convert[column.name] = ''
                 continue
-            else:
-                value = f2[0]
+            value = f2[0]
             parse = lambda it: it
             if column == TableColumn.date: parse = lambda str: datetime.strptime(str, '%Y-%m-%d')
             if column == TableColumn.startTime: parse = parse_timedelta
@@ -142,8 +141,8 @@ def generate_csv(data: any, out: IO):
             customer = ''
         out.write(f'{date_str},,{customer},{start},{end},{total},{dayTotal},{dayTotalDec},{entry['details']}\n')
 
-    sorted(data, key=lambda it: (it['date'], it['startTime']))
     data = list(data)
+    sorted(data, key=lambda it: (it['date'], it['startTime']))
 
     for i in range(0, len(data)):
         entry = data[i]
@@ -170,12 +169,23 @@ def generate_csv(data: any, out: IO):
 
 
 def convert_to_ods(input: IO, output: IO):
-    dataframe = pandas.read_csv(input)
+    dataframe = pandas.read_csv(input, header=0)
+    dataframe.fillna("", inplace=True)
+
     ods = OpenDocumentSpreadsheet()
     table = Table(name=f'Kalenderwoche {week}')
     ods.spreadsheet.addElement(table)
+
+    header_row = TableRow()
+    table.addElement(header_row)
+    for column_name in dataframe.columns:
+        tc = TableCell()
+        header_row.addElement(tc)
+        tc.addElement(P(text=str(column_name)))
+
     for row in dataframe.itertuples(index=False):
         tr = TableRow()
+
         table.addElement(tr)
         for cell in row:
             tc = TableCell()
@@ -200,7 +210,7 @@ for user in users:
     userdata = filter(lambda e: e['user'] == user, data)
 
     if args.year:
-        userdata = filter(lambda e: e['year'] >= args.year, userdata)
+        userdata = filter(lambda e: e['date'].year == args.year, userdata)
         year = args.year
     else:
         year = datetime.today().year
@@ -210,6 +220,8 @@ for user in users:
         # week range
         start = datetime.strptime(args.since, '%d-%m-%Y').isocalendar().week
         weeks = map(lambda x: x + start, range(datetime.today().isocalendar().week - start))
+    elif args.week:
+        weeks = [args.week]
     else:
         weeks = [datetime.today().isocalendar().week]
 
@@ -238,7 +250,7 @@ for user in users:
         elif args.p:
             sys.stderr.writelines('Could not read generated CSV data')
         if args.o or args.u:
-            with open(f'.cache/{user}.csv', 'r') as user_csv, open(f'.out/{user}.ods', 'w') as user_ods:
+            with open(f'.cache/{user}.csv', 'r') as user_csv, open(f'.out/{user}.ods', 'wb') as user_ods:
                 convert_to_ods(user_csv, user_ods)
         if args.u:
             with open(f'.out/{user}.ods', 'r') as user_ods:
