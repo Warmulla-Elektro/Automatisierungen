@@ -253,5 +253,6 @@ for user in users:
             with open(f'.cache/{user}.csv', 'r') as user_csv, open(f'.out/{user}.ods', 'wb') as user_ods:
                 convert_to_ods(user_csv, user_ods)
         if args.u:
-            with open(f'.out/{user}.ods', 'r') as user_ods:
-                nc.upload(user_ods, f'Stunden {year}/Kalenderwoche {week}/{user}.ods')
+            with open(f'.out/{user}.ods', 'rb') as user_ods:
+                nc.upload(f'Stunden {year}/Kalenderwoche {week}/{user}.ods', user_ods)
+                nc.share(f'Stunden {year}', 'Stundeneinsicht')

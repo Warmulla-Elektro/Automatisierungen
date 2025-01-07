@@ -1,8 +1,16 @@
+import logging
 import os
-from os import mkdir
-from typing import IO
+from http.client import HTTPConnection
 
 import requests
+
+HTTPConnection.debuglevel = 1
+
+logging.basicConfig()
+logging.getLogger().setLevel(logging.DEBUG)
+requests_log = logging.getLogger("requests.packages.urllib3")
+requests_log.setLevel(logging.DEBUG)
+requests_log.propagate = True
 
 
 def load_password(path='nc_api_bot_password.cred'):
@@ -23,7 +31,7 @@ class ApiWrapper:
 
     def mkdirs(self, path):
         for blob in path.split('/'):
-            mkdir(blob)
+            self.mkdir(blob)
 
     def mkdir(self, path):
         requests.request("MKCOL", f'https://warmulla.kaleidox.de/remote.php/dav/files/bot/{path}',
@@ -31,10 +39,13 @@ class ApiWrapper:
                          auth=('bot', self.password))
 
     def upload(self, path, data):
-        for blob in path.split('/')[:-1]: mkdir(blob)
+        split = str(path).split('/')
+        for i in range(0, len(split)):
+            self.mkdir('/'.join(split[0:i]))
         requests.put(f'https://warmulla.kaleidox.de/remote.php/dav/files/bot/{path}', data,
-                      headers={'OCS-APIRequest': 'true'},
-                      auth=('bot', self.password))
+                     headers={'OCS-APIRequest': 'true',
+                              'Content-Type': 'application/octet-stream'},
+                     auth=('bot', self.password))
 
     def share(self, path, group, permissions: int = 31, download: bool = True):
         qp = {
