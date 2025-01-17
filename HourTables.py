@@ -132,7 +132,7 @@ def generate_csv(data: any, out: IO):
         dayTotal = ''
         dayTotalDec += totalDec
         if first:
-            date_str = f'{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')}'
+            date_str = f"{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')}"
         else:
             date_str = ''
         if last:
@@ -143,7 +143,7 @@ def generate_csv(data: any, out: IO):
         else:
             customer = ''
         out.write(
-            f'{date_str},,{customer},{start},{end},{total},{dayTotal if last else ''},{dayTotalDec if last else ''},{entry['details']}\n')
+            f"{date_str},,{customer},{start},{end},{total},{dayTotal if last else ''},{dayTotalDec if last else ''},{entry['details']}\n")
         out.flush()
         return True
 
@@ -159,7 +159,7 @@ def generate_csv(data: any, out: IO):
                 reason = entry['details']
             else:
                 reason = 'Freier Tag (kein Grund angegeben)'
-            out.write(f'{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')},,{reason}\n')
+            out.write(f"{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')},,{reason}\n")
             continue
         if i + 1 < len(data):
             next = data[i + 1]
