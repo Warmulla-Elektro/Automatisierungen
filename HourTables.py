@@ -138,7 +138,8 @@ def generate_csv(data: any, out: IO):
             customer = entry['customer']
         else:
             customer = ''
-        out.write(f'{date_str},,{customer},{start},{end},{total},{dayTotal},{dayTotalDec},{entry['details']}\n')
+        out.write(
+            f'{date_str},,{customer},{start},{end},{total},{dayTotal if last else ''},{dayTotalDec if last else ''},{entry['details']}\n')
 
     data = list(data)
     data = sorted(data, key=lambda it: (it['date'], it['startTime']))
@@ -156,17 +157,19 @@ def generate_csv(data: any, out: IO):
             continue
         if i + 1 < len(data):
             next = data[i + 1]
-        last = next and next['date'] != entry['date']
+            last = next and next['date'] != entry['date']
+        else: last = True
         if entry['breakMultiplier'] == 0 or entry['breakMultiplier'] == '':
             write_timeblock(entry, entry['startTime'], entry['endTime'], first=first, last=last)
         else:
             breakEnd = entry['breakStart'] + timedelta(minutes=15 * int(entry['breakMultiplier']))
-            write_timeblock(entry, entry['startTime'], entry['breakStart'], first=first, last=last)
-            write_timeblock(entry, breakEnd, entry['endTime'], False,first=False, last=last)
+            write_timeblock(entry, entry['startTime'], entry['breakStart'], True, first, False)
+            write_timeblock(entry, breakEnd, entry['endTime'], False, False, last)
         if last:
             dayTotalDec = 0.0
             first = True
-        else: first = False
+        else:
+            first = False
 
     out.write(f',\n,,,,,,Woche Gesamt,{weekTotalDec}')
 
