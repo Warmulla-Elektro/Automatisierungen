@@ -1,6 +1,7 @@
 import argparse
 import json
 import os
+import shutil
 import sys
 import time
 from datetime import datetime, timedelta
@@ -19,8 +20,12 @@ global dayTotalDec, weekTotalDec
 dayTotalDec = 0.0
 weekTotalDec = 0.0
 
-if not os.path.isdir('.cache'): os.mkdir('.cache')
-if not os.path.isdir('.out'): os.mkdir('.out')
+if os.path.isdir('.cache'):
+    shutil.rmtree('.cache')
+if not os.path.isdir('.cache'):
+    os.mkdir('.cache')
+if not os.path.isdir('.out'):
+    os.mkdir('.out')
 
 
 def weekday(datetime=datetime.today()):
@@ -107,7 +112,6 @@ def load_data(force_reload: bool = False, cache_file='hourdata'):
 
 def generate_csv(data: any, out: IO):
     global dayTotalDec, weekTotalDec
-    next = None
     first = True
 
     out.write(f'{user},Rg.Nr.,{year} Woche {week},Von,Bis,Gesamt,Tag Gesamt,Dezimal,Bemerkungen\n')
@@ -125,21 +129,26 @@ def generate_csv(data: any, out: IO):
             return td.total_seconds() / 3600
 
         total = end - start
+        totalDec = convert(total)
+        if totalDec == 0:
+            return False
         dayTotal = ''
-        dayTotalDec += convert(total)
-        if last:
-            dayTotal = format(dayTotalDec)
-            weekTotalDec += dayTotalDec
+        dayTotalDec += totalDec
         if first:
             date_str = f'{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')}'
         else:
             date_str = ''
+        if last:
+            dayTotal = format(dayTotalDec)
+            weekTotalDec += dayTotalDec
         if print_customer:
             customer = entry['customer']
         else:
             customer = ''
         out.write(
             f'{date_str},,{customer},{start},{end},{total},{dayTotal if last else ''},{dayTotalDec if last else ''},{entry['details']}\n')
+        out.flush()
+        return True
 
     data = list(data)
     data = sorted(data, key=lambda it: (it['date'], it['startTime']))
@@ -158,13 +167,14 @@ def generate_csv(data: any, out: IO):
         if i + 1 < len(data):
             next = data[i + 1]
             last = next and next['date'] != entry['date']
-        else: last = True
+        else:
+            last = True
         if entry['breakMultiplier'] == 0 or entry['breakMultiplier'] == '':
-            write_timeblock(entry, entry['startTime'], entry['endTime'], first=first, last=last)
+            write_timeblock(entry, entry['startTime'], entry['endTime'], True, first, last)
         else:
             breakEnd = entry['breakStart'] + timedelta(minutes=15 * int(entry['breakMultiplier']))
-            write_timeblock(entry, entry['startTime'], entry['breakStart'], True, first, False)
-            write_timeblock(entry, breakEnd, entry['endTime'], False, False, last)
+            written = write_timeblock(entry, entry['startTime'], entry['breakStart'], True, first, False)
+            write_timeblock(entry, breakEnd, entry['endTime'], not written, first if not written else False, last)
         if last:
             dayTotalDec = 0.0
             first = True
