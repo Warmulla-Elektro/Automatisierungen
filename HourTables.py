@@ -52,8 +52,6 @@ def parse_arguments():
     parser.add_argument('--since', type=parseDatetime)
     parser.add_argument('--customer', type=str)
     parser.add_argument('--detail', type=str)
-    parser.add_argument('-S', action='store_true', help='Force Reload')
-    parser.add_argument('-C', action='store_true', help='Cleanup outputs')  # todo
     parser.add_argument('-c', action='store_true', help='Generate CSV')
     parser.add_argument('-o', action='store_true', help='Convert to ODS format; implies -c')
     parser.add_argument('-u', action='store_true', help='Upload File; implies -o')
@@ -63,9 +61,8 @@ def parse_arguments():
     return parser.parse_args()
 
 
-def load_data(force_reload: bool = False, cache_file='hourdata'):
-    if (not force_reload
-            and (os.path.exists(cache_file)
+def load_data(cache_file='hourdata'):
+    if ((os.path.exists(cache_file)
                  and datetime.fromtimestamp(os.stat(cache_file).st_mtime) > (
                          datetime.now() - timedelta(hours=1)))):
         with open(cache_file, "r") as cache:
@@ -215,7 +212,7 @@ nc = ApiWrapper()
 
 # load data
 args = parse_arguments()
-data = load_data(args.S)
+data = load_data()
 
 # for each user
 if args.users:
