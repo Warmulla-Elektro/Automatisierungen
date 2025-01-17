@@ -15,8 +15,9 @@ from odf.text import P
 
 from Nextcloud import ApiWrapper
 
-global dayTotalDec
+global dayTotalDec, weekTotalDec
 dayTotalDec = 0.0
+weekTotalDec = 0.0
 
 if not os.path.isdir('.cache'): os.mkdir('.cache')
 if not os.path.isdir('.out'): os.mkdir('.out')
@@ -51,12 +52,13 @@ def parse_arguments():
     parser.add_argument('-c', action='store_true', help='Generate CSV')
     parser.add_argument('-o', action='store_true', help='Convert to ODS format; implies -c')
     parser.add_argument('-u', action='store_true', help='Upload File; implies -o')
+    parser.add_argument('-t', action='store_true', help='Calculate and publish overtime data; implies -c')
     parser.add_argument('-p', action='store_true', help='Print everything to STDOUT as well as to file')
     parser.add_argument('-v', action='store_true', help='Verbose Logging')
     return parser.parse_args()
 
 
-def load_data(force_reload: bool = False, cache_file='.cache/data.json'):
+def load_data(force_reload: bool = False, cache_file='hourdata'):
     if (not force_reload
             and (os.path.exists(cache_file)
                  and datetime.fromtimestamp(os.stat(cache_file).st_mtime) > (
@@ -64,14 +66,7 @@ def load_data(force_reload: bool = False, cache_file='.cache/data.json'):
         with open(cache_file, "r") as cache:
             data = json.loads(cache.read())
     else:
-        response = nc.fetchTableData(2)
-        if response.status_code / 100 != 2:
-            sys.stderr.writelines(
-                f'Unable to parse response: Invalid response code {response.status_code}\n\t{response.text}')
-            return []
-        with open(cache_file, 'w') as cache:
-            cache.write(response.text)
-        data = json.loads(response.text)
+        data = nc.fetchTableData(2, cache_file)
 
     # convert from table data todo
     class TableColumn(Enum):
@@ -111,13 +106,15 @@ def load_data(force_reload: bool = False, cache_file='.cache/data.json'):
 
 
 def generate_csv(data: any, out: IO):
-    global dayTotalDec
+    global dayTotalDec, weekTotalDec
+    next = None
+    first = True
 
     out.write(f'{user},Rg.Nr.,{year} Woche {week},Von,Bis,Gesamt,Tag Gesamt,Dezimal,Bemerkungen\n')
     out.write(',\n')
 
     def write_timeblock(entry, start: timedelta, end: timedelta, print_customer=True, first=True, last=True):
-        global dayTotalDec
+        global dayTotalDec, weekTotalDec
 
         def format(timeDec):
             hours = int(float(timeDec))
@@ -125,12 +122,14 @@ def generate_csv(data: any, out: IO):
             return f"{hours:02}:{int(minutes):02}"
 
         def convert(td: timedelta):
-            return round(td.total_seconds() + 3600, 2)
+            return td.total_seconds() / 3600
 
         total = end - start
         dayTotal = ''
         dayTotalDec += convert(total)
-        if last: dayTotal = format(dayTotalDec)
+        if last:
+            dayTotal = format(dayTotalDec)
+            weekTotalDec += dayTotalDec
         if first:
             date_str = f'{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')}'
         else:
@@ -142,7 +141,7 @@ def generate_csv(data: any, out: IO):
         out.write(f'{date_str},,{customer},{start},{end},{total},{dayTotal},{dayTotalDec},{entry['details']}\n')
 
     data = list(data)
-    sorted(data, key=lambda it: (it['date'], it['startTime']))
+    data = sorted(data, key=lambda it: (it['date'], it['startTime']))
 
     for i in range(0, len(data)):
         entry = data[i]
@@ -155,17 +154,21 @@ def generate_csv(data: any, out: IO):
                 reason = 'Freier Tag (kein Grund angegeben)'
             out.write(f'{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')},,{reason}\n')
             continue
-        last = False
         if i + 1 < len(data):
             next = data[i + 1]
-        if next and next['date'] != entry['date']: last = True
+        last = next and next['date'] != entry['date']
         if entry['breakMultiplier'] == 0 or entry['breakMultiplier'] == '':
-            write_timeblock(entry, entry['startTime'], entry['endTime'], last=last)
+            write_timeblock(entry, entry['startTime'], entry['endTime'], first=first, last=last)
         else:
             breakEnd = entry['breakStart'] + timedelta(minutes=15 * int(entry['breakMultiplier']))
-            write_timeblock(entry, entry['startTime'], entry['breakStart'], last=last)
-            write_timeblock(entry, breakEnd, entry['endTime'], False, last)
-        if last: dayTotalDec = 0.0
+            write_timeblock(entry, entry['startTime'], entry['breakStart'], first=first, last=last)
+            write_timeblock(entry, breakEnd, entry['endTime'], False,first=False, last=last)
+        if last:
+            dayTotalDec = 0.0
+            first = True
+        else: first = False
+
+    out.write(f',\n,,,,,,Woche Gesamt,{weekTotalDec}')
 
 
 def convert_to_ods(input: IO, output: IO):
@@ -226,8 +229,13 @@ for user in users:
         weeks = [datetime.today().isocalendar().week]
 
     userdata = list(userdata)
+    prevTotal = nc.getOvertime(user)
+    if args.t:
+        meta = nc.getMetadata(user, 'weekly_hours')
+        weeklyHours = meta if meta is not None else 36
 
     for week in weeks:
+        weekTotalDec = 0.0
         weekdata = filter(lambda e: e['date'].isocalendar().week == week, userdata)
 
         # apply filters
@@ -241,7 +249,7 @@ for user in users:
             weekdata = filter(lambda e: e['detail'].search(args.detail), weekdata)
 
         # run per-user tasks
-        if args.c or args.o or args.u:
+        if args.t or args.c or args.o or args.u:
             with open(f'.cache/{user}.csv', 'w') as user_csv:
                 generate_csv(weekdata, user_csv)
         if args.p and os.path.exists(f'.cache/{user}.csv'):
@@ -249,6 +257,19 @@ for user in users:
                 print(buf.read())
         elif args.p:
             sys.stderr.writelines('Could not read generated CSV data')
+        if args.t:
+            delta = -weeklyHours + weekTotalDec
+            total = prevTotal + delta
+            nc.addRow(17, {
+                68: user,  # user
+                69: datetime.today().strftime('%y-%m-%d'),  # date
+                77: delta,  # delta
+                78: total,  # total
+                108: True  # generated
+            })
+            if (args.p):
+                print(f'')
+            prevTotal = total
         if args.o or args.u:
             with open(f'.cache/{user}.csv', 'r') as user_csv, open(f'.out/{user}.ods', 'wb') as user_ods:
                 convert_to_ods(user_csv, user_ods)
