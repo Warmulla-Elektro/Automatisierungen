@@ -2,17 +2,13 @@ import argparse
 import json
 import os
 import shutil
+import subprocess
 import sys
 import time
 from datetime import datetime, timedelta
 from enum import Enum
 from types import NoneType
 from typing import IO
-
-import pandas
-from odf.opendocument import OpenDocumentSpreadsheet
-from odf.table import Table, TableRow, TableCell
-from odf.text import P
 
 from Nextcloud import ApiWrapper
 
@@ -63,8 +59,8 @@ def parse_arguments():
 
 def load_data(cache_file='hourdata'):
     if ((os.path.exists(cache_file)
-                 and datetime.fromtimestamp(os.stat(cache_file).st_mtime) > (
-                         datetime.now() - timedelta(hours=1)))):
+         and datetime.fromtimestamp(os.stat(cache_file).st_mtime) > (
+                 datetime.now() - timedelta(hours=1)))):
         with open(cache_file, "r") as cache:
             data = json.loads(cache.read())
     else:
@@ -181,31 +177,10 @@ def generate_csv(data: any, out: IO):
     out.write(f',\n,,,,,,Woche Gesamt,{weekTotalDec}')
 
 
-def convert_to_ods(input: IO, output: IO):
-    dataframe = pandas.read_csv(input, header=0)
-    dataframe.fillna("", inplace=True)
-
-    ods = OpenDocumentSpreadsheet()
-    table = Table(name=f'Kalenderwoche {week}')
-    ods.spreadsheet.addElement(table)
-
-    header_row = TableRow()
-    table.addElement(header_row)
-    for column_name in dataframe.columns:
-        tc = TableCell()
-        header_row.addElement(tc)
-        tc.addElement(P(text=str(column_name)))
-
-    for row in dataframe.itertuples(index=False):
-        tr = TableRow()
-
-        table.addElement(tr)
-        for cell in row:
-            tc = TableCell()
-            tr.addElement(tc)
-            tc.addElement(P(text=str(cell)))
-
-    ods.write(output)
+def convert_to_ods(input: str, output: str):
+    subprocess.run(
+        ["libreoffice", "--headless", "--convert-to", "ods", "--infilter=\"CSV:44,34,0,0,4/2/5/2/6/2/7/2\"", input,
+         "--outdir", ".out"])
 
 
 nc = ApiWrapper()
@@ -281,8 +256,7 @@ for user in users:
                 print(f'')
             prevTotal = total
         if args.o or args.u:
-            with open(f'.cache/{user}.csv', 'r') as user_csv, open(f'.out/{user}.ods', 'wb') as user_ods:
-                convert_to_ods(user_csv, user_ods)
+            convert_to_ods(f'.cache/{user}.csv', f'.out/{user}.ods')
         if args.u:
             with open(f'.out/{user}.ods', 'rb') as user_ods:
                 nc.upload(f'Stunden {year}/Kalenderwoche {week}/{user}.ods', user_ods)
