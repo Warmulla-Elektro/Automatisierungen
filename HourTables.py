@@ -107,8 +107,7 @@ def generate_csv(data: any, out: IO):
     global dayTotalDec, weekTotalDec
     first = True
 
-    out.write(f'{user},Rg.Nr.,{year} Woche {week},Von,Bis,Gesamt,Tag Gesamt,Dezimal,Bemerkungen\n')
-    out.write(',\n')
+    out.write(f'\n\n\n\n{user},Rg.Nr.,{year} Woche {week},Von,Bis,Gesamt,Tag Gesamt,Dezimal,Bemerkungen\n\n')
 
     def write_timeblock(entry, start: timedelta, end: timedelta, print_customer=True, first=True, last=True):
         global dayTotalDec, weekTotalDec
@@ -128,7 +127,7 @@ def generate_csv(data: any, out: IO):
         dayTotal = ''
         dayTotalDec += totalDec
         if first:
-            date_str = f"{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')}"
+            date_str = f"\n{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')}"
         else:
             date_str = ''
         if last:
