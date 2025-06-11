@@ -154,7 +154,7 @@ def generate_csv(data: any, out: IO):
                 reason = entry['details']
             else:
                 reason = 'Freier Tag (kein Grund angegeben)'
-            out.write(f"{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')},,{reason}\n")
+            out.write(f"\n{weekday(entry['date'])} {entry['date'].strftime('%d.%m.')},,{reason}\n")
             continue
         if i + 1 < len(data):
             next = data[i + 1]
@@ -205,7 +205,7 @@ for user in users:
         userdata = filter(lambda e: e['month'] >= args.month, userdata)
     elif args.since:
         # week range
-        start = datetime.strptime(args.since, '%d-%m-%Y').isocalendar().week
+        start = args.since.isocalendar().week
         weeks = map(lambda x: x + start, range(datetime.today().isocalendar().week - start))
     elif args.week:
         weeks = [args.week]
@@ -225,12 +225,12 @@ for user in users:
         # apply filters
         if args.since:
             weekdata = filter(
-                lambda e: (datetime(year=e['year'], month=1, day=1) + timedelta(weeks=e['week'])) >= args.since,
+                lambda e: (datetime(year=e['date'].year, month=1, day=1) + timedelta(weeks=e['date'].isocalendar().week)) >= args.since,
                 weekdata)
         if args.customer:
-            weekdata = filter(lambda e: e['customer'].search(args.customer), weekdata)
+            weekdata = filter(lambda e: args.customer not in e['customer'], weekdata)
         if args.detail:
-            weekdata = filter(lambda e: e['detail'].search(args.detail), weekdata)
+            weekdata = filter(lambda e: args.detail not in e['detail'], weekdata)
 
         # run per-user tasks
         if args.t or args.c or args.o or args.u:
