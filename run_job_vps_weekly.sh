@@ -1,2 +1,2 @@
 git pull -f
-python HourTables.py -u
+python3 HourTables.py -up
