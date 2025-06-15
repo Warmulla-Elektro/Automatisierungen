@@ -220,7 +220,7 @@ for user in users:
 
     for week in weeks:
         weekTotalDec = 0.0
-        weekdata = filter(lambda e: e['date'].isocalendar().week == week, userdata)
+        weekdata = filter(lambda e: e['date'].year == year and e['date'].isocalendar().week == week, userdata)
 
         # apply filters
         if args.since:
