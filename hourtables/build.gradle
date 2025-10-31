@@ -1,0 +1,31 @@
+plugins {
+    id 'application'
+}
+
+group = 'de.warmulla_elektro'
+version = '1.0-SNAPSHOT'
+mainClassName = 'de.warmulla_elektro.hourtables.Program'
+
+repositories {
+    mavenLocal()
+    maven { url = 'https://maven.comroid.org' }
+    mavenCentral()
+}
+
+dependencies {
+    implementation project(':japi')
+
+    annotationProcessor 'org.projectlombok:lombok:+'
+    compileOnly 'org.projectlombok:lombok:+'
+
+    implementation 'tools.jackson.core:jackson-databind:+'
+    implementation 'commons-cli:commons-cli:+'
+    implementation 'org.odftoolkit:odfdom-java:+'
+
+    testImplementation 'org.easymock:easymock:+'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:+'
+}
+
+test {
+    useJUnitPlatform()
+}

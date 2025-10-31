@@ -33,9 +33,6 @@ class ApiWrapper:
                             headers={'Accepts': 'application/json', 'OCS-APIRequest': 'true'},
                             auth=('bot', self.password)).json().ocs.data.users
 
-    def getUser(self):
-        return requests.get('https://warmulla.kaleidox.de/ocs/v1/users', )
-
     def mkdirs(self, path):
         for blob in path.split('/'):
             self.mkdir(blob)

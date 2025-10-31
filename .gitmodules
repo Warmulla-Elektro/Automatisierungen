@@ -1,0 +1,3 @@
+[submodule "hourtables/japi"]
+	path = hourtables/japi
+	url = https://github.com/comroid-git/japi
