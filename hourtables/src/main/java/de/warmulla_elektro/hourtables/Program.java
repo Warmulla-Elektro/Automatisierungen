@@ -155,7 +155,7 @@ public class Program {
                     // tasks
                     // generate ODS file
                     try (var ods = OdfSpreadsheetDocument.newSpreadsheetDocument()) {
-                        var table = ods.getTableByName("Stunden");
+                        var table = ods.getTableByName("Sheet1");
 
                         table.getCellByPosition("A5").setStringValue(user);
                         table.getCellByPosition("B5").setStringValue("Rg. Nr.");
