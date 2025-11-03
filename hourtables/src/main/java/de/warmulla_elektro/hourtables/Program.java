@@ -33,6 +33,7 @@ import java.time.temporal.WeekFields;
 import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
+import java.util.logging.Level;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -140,7 +141,11 @@ public class Program {
 
                 final var useData = stream.toList();
 
-                if (useData.isEmpty()) continue;
+                if (useData.isEmpty()) {
+                    log.warning("No entries for user %s, skipping".formatted(user));
+                    continue;
+                }
+                log.info("Found %d entries for user %s".formatted(useData.size(), user));
 
                 // foreach week
                 final int[] weeks;
@@ -156,10 +161,15 @@ public class Program {
                     long      weekDuration = 0;
                     final var weekData     = useData.stream().filter(entry -> week(entry.getDate()) == week).toList();
 
-                    if (weekData.isEmpty()) continue;
+                    if (weekData.isEmpty()) {
+                        log.warning("No entries for user %s, skipping".formatted(user));
+                        continue;
+                    }
+                    log.info("Found %d week entries for user %s".formatted(useData.size(), user));
 
                     // tasks
                     // generate ODS file
+                    log.info("Generating ODS for " + user);
                     try (var ods = OdfSpreadsheetDocument.newSpreadsheetDocument()) {
                         var table = ods.getTableByName("Sheet1");
 
@@ -268,21 +278,27 @@ public class Program {
 
                         ods.save(OUT_DIR + user + ".ods");
                     } catch (Exception e) {
-                        throw new RuntimeException("Could not generate ODS file", e);
+                        log.log(Level.SEVERE, "Could not generate ODS file for " + user, e);
+                        continue;
                     }
 
                     // upload file
                     if (!args.hasOption('u')) {
-                        log.warning("No upload task specified");
+                        log.info("No upload task specified");
                         continue;
                     }
+                    log.info("Uploading ODS for " + user);
                     var files    = ocs.child(FilesApi.class).assertion();
                     var tableDir = "Stunden " + year + "/Kalenderwoche " + week;
-                    files.mkdirs(tableDir).join();
+                    try {
+                        files.mkdirs(tableDir).join();
+                    } catch (Throwable t) {
+                        log.log(Level.WARNING, "Could not MKDIR", t);
+                    }
                     try (var fis = new FileInputStream(OUT_DIR + user + ".ods")) {
                         files.upload(tableDir + '/' + user + ".ods", fis);
                     } catch (IOException e) {
-                        throw new RuntimeException("Could not upload ODS file", e);
+                        log.log(Level.SEVERE, "Could not upload ODS file for " + user, e);
                     }
                 }
             }
