@@ -31,6 +31,7 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.WeekFields;
 import java.util.Locale;
+import java.util.TreeMap;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -156,12 +157,8 @@ public class Program {
                 }
 
                 for (var week : weeks) {
-                    long weekDuration = 0;
-                    final var weekData =
-                            useData.stream()
-                                    .filter(entry -> week(entry.getDate()) == week)
-                                    .sorted(HourtableEntry.COMPARATOR)
-                                    .toList();
+                    long      weekDuration = 0;
+                    final var weekData     = useData.stream().filter(entry -> week(entry.getDate()) == week).toList();
 
                     if (weekData.isEmpty()) {
                         log.warning("No entries for user %s, skipping".formatted(user));
@@ -187,9 +184,8 @@ public class Program {
 
                         int tableRow = 7;
                         nextDay:
-                        for (var dayEntries : weekData.stream()
-                                .collect(Collectors.groupingBy(HourtableEntry::getDate))
-                                .entrySet()) {
+                        for (var dayEntries : new TreeMap<>(weekData.stream()
+                                .collect(Collectors.groupingBy(HourtableEntry::getDate))).entrySet()) {
                             long dayDuration = 0;
                             table.getCellByPosition(0, tableRow).setStringValue(SHEET_DATE.format(dayEntries.getKey()));
 

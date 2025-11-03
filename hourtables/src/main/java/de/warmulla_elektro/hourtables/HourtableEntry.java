@@ -9,13 +9,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.Comparator;
-import java.util.Objects;
 
 @Value
 public class HourtableEntry {
-    public static final Comparator<HourtableEntry> COMPARATOR = Comparator.comparing(HourtableEntry::getDate)
-            .reversed()
-            .thenComparing(entry -> Objects.requireNonNullElse(entry.getStartTime(), LocalTime.MIDNIGHT));
+    public static final Comparator<HourtableEntry> COMPARATOR = Comparator.comparing(HourtableEntry::getStart);
 
     @Convert
     public static HourtableEntry convert(TableEntry entry) {
