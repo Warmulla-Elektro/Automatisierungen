@@ -195,6 +195,7 @@ public class Program {
 
                                 // vacation?
                                 if (Boolean.TRUE.equals(entry.getVacation())) {
+                                    tableRow += 2;
                                     continue nextDay;
                                 }
 
