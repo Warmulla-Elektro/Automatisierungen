@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.JsonFactoryBuilder;
 import com.fasterxml.jackson.core.StreamReadFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import lombok.extern.java.Log;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
@@ -13,11 +14,14 @@ import org.comroid.api.func.ext.Context;
 import org.comroid.api.io.FileHandle;
 import org.comroid.api.model.Authentication;
 import org.comroid.api.net.nextcloud.OcsApiWrapper;
+import org.comroid.api.net.nextcloud.component.FilesApi;
 import org.comroid.api.net.nextcloud.component.TablesApi;
 import org.comroid.api.net.nextcloud.component.UserApi;
 import org.odftoolkit.odfdom.doc.OdfSpreadsheetDocument;
 import org.odftoolkit.odfdom.dom.style.OdfStyleFamily;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -32,6 +36,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+@Log
 public class Program {
     public static final String            OUT_DIR             = "./.out/";
     public static final DateTimeFormatter DATE                = DateTimeFormatter.ofPattern("yyyy-MM-dd");
@@ -227,6 +232,8 @@ public class Program {
                                         .setDoubleValue((double) TimeUnit.NANOSECONDS.toMinutes(dayDuration) / 60);
                                 table.getCellByPosition(8, tableRow).setStringValue(entry.getDetails());
 
+                                if (args.hasOption('o')) System.out.println(entry);
+
                                 tableRow += 1;
                             }
 
@@ -265,6 +272,18 @@ public class Program {
                     }
 
                     // upload file
+                    if (!args.hasOption('u')) {
+                        log.warning("No upload task specified");
+                        continue;
+                    }
+                    var files    = ocs.child(FilesApi.class).assertion();
+                    var tableDir = "Stunden " + year + "/Kalenderwoche " + week;
+                    files.mkdirs(tableDir).join();
+                    try (var fis = new FileInputStream(OUT_DIR + user + ".ods")) {
+                        files.upload(tableDir + '/' + user + ".ods", fis);
+                    } catch (IOException e) {
+                        throw new RuntimeException("Could not upload ODS file", e);
+                    }
                 }
             }
         }

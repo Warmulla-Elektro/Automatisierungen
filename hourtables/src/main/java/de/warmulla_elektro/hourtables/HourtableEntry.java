@@ -46,4 +46,17 @@ public class HourtableEntry implements Comparable<HourtableEntry> {
     public int compareTo(@NotNull HourtableEntry other) {
         return COMPARATOR.compare(this, other);
     }
+
+    @Override
+    public String toString() {
+        return "[%s] (%s %s-%s) %s: %s (Pause: %s)".formatted(user,
+                Program.DATE.format(date),
+                startTime == null ? "" : Program.TIME.format(startTime),
+                endTime == null ? "" : Program.TIME.format(endTime),
+                customer,
+                details,
+                breakMultiplier == null || breakStart == null
+                ? "keine"
+                : "%dm um %s".formatted(breakMultiplier * 15, Program.TIME.format(breakStart)));
+    }
 }
