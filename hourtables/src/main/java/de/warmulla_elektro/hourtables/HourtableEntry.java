@@ -3,14 +3,18 @@ package de.warmulla_elektro.hourtables;
 import lombok.Value;
 import org.comroid.annotations.Convert;
 import org.comroid.api.net.nextcloud.model.tables.TableEntry;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Comparator;
 
 @Value
-public class HourtableEntry {
+public class HourtableEntry implements Comparable<HourtableEntry> {
+    public static final Comparator<HourtableEntry> COMPARATOR = Comparator.comparing(HourtableEntry::getStart);
+
     @Convert
     public static HourtableEntry convert(TableEntry entry) {
         return new HourtableEntry(entry.getCreatedBy(),
@@ -27,14 +31,19 @@ public class HourtableEntry {
     String    user;
     LocalDate date;
     String    customer;
-    LocalTime startTime;
-    LocalTime endTime;
+    @Nullable LocalTime startTime;
+    @Nullable LocalTime endTime;
     @Nullable Byte      breakMultiplier;
     @Nullable LocalTime breakStart;
     @Nullable String    details;
     @Nullable Boolean   vacation;
 
     public LocalDateTime getStart() {
-        return LocalDateTime.of(date, startTime);
+        return LocalDateTime.of(date, startTime == null ? LocalTime.MIDNIGHT : startTime);
+    }
+
+    @Override
+    public int compareTo(@NotNull HourtableEntry other) {
+        return COMPARATOR.compare(this, other);
     }
 }

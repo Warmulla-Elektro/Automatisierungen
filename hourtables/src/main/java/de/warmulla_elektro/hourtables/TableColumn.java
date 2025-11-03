@@ -28,20 +28,21 @@ public enum TableColumn implements IntegerAttribute {
         }
     }, START_TIME(9) {
         @Override
-        public @NotNull LocalTime extract(TableEntry entry) {
-            return LocalTime.from(Program.TIME.parse(Objects.requireNonNull(super.extract(entry), "startTime")
-                    .toString()));
+        public @Nullable LocalTime extract(TableEntry entry) {
+            var extract = super.extract(entry);
+            return extract == null ? null : LocalTime.from(Program.TIME.parse(extract.toString()));
         }
     }, ENDTIME(10) {
         @Override
-        public @NotNull LocalTime extract(TableEntry entry) {
-            return LocalTime.from(Program.TIME.parse(Objects.requireNonNull(super.extract(entry), "endTime")
-                    .toString()));
+        public @Nullable LocalTime extract(TableEntry entry) {
+            var extract = super.extract(entry);
+            return extract == null ? null : LocalTime.from(Program.TIME.parse(extract.toString()));
         }
     }, BREAK_MULTIPLIER(13) {
         @Override
-        public @NotNull Byte extract(TableEntry entry) {
-            return Byte.parseByte(Objects.requireNonNull(super.extract(entry), "breakMultiplier").toString());
+        public @Nullable Byte extract(TableEntry entry) {
+            var extract = super.extract(entry);
+            return extract == null ? null : Byte.parseByte(extract.toString());
         }
     }, BREAK_START(22) {
         @Override

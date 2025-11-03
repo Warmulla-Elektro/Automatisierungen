@@ -1,10 +1,15 @@
 package de.warmulla_elektro.hourtables;
 
+import com.fasterxml.jackson.core.JsonFactoryBuilder;
+import com.fasterxml.jackson.core.StreamReadFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
+import org.comroid.api.func.ext.Context;
 import org.comroid.api.io.FileHandle;
 import org.comroid.api.model.Authentication;
 import org.comroid.api.net.nextcloud.OcsApiWrapper;
@@ -27,7 +32,7 @@ import java.util.stream.IntStream;
 public class Program {
     public static final String            OUT_DIR             = "./.out/";
     public static final DateTimeFormatter DATE                = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    public static final DateTimeFormatter TIME                = DateTimeFormatter.ofPattern("HH-mm");
+    public static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
     public static final DateTimeFormatter SHEET_DATE          = DateTimeFormatter.ofPattern("EE dd.MM.");
     public static final FileHandle        NC_API_BOT_PASSWORD = new FileHandle("nc_api_bot_password.cred");
     public static final Options           OPTIONS             = new Options() {{
@@ -46,6 +51,14 @@ public class Program {
     }};
 
     public static void main(String... $args) {
+        Context.Base.ROOT.getMyMembers().add(new ObjectMapper(new JsonFactoryBuilder() {{
+            enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION);
+        }}.build()) {
+            {
+                registerModule(new JavaTimeModule());
+            }
+        });
+
         CommandLine args;
         try {
             args = new DefaultParser().parse(OPTIONS, $args);
@@ -68,6 +81,7 @@ public class Program {
                     .join()
                     .stream()
                     .map(HourtableEntry::convert)
+                    .sorted()
                     .toList();
 
             for (var user : users) {
