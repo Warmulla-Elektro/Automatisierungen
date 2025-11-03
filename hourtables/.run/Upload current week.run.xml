@@ -1,0 +1,16 @@
+<component name="ProjectRunConfigurationManager">
+    <configuration default="false" name="Upload current week" type="Application" factoryName="Application">
+        <option name="MAIN_CLASS_NAME" value="de.warmulla_elektro.hourtables.Program"/>
+        <module name="hourtables.main"/>
+        <option name="PROGRAM_PARAMETERS" value="-up"/>
+        <extension name="coverage">
+            <pattern>
+                <option name="PATTERN" value="de.warmulla_elektro.hourtables.*"/>
+                <option name="ENABLED" value="true"/>
+            </pattern>
+        </extension>
+        <method v="2">
+            <option name="Make" enabled="true"/>
+        </method>
+    </configuration>
+</component>
