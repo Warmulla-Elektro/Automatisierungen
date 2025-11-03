@@ -16,6 +16,7 @@ import org.comroid.api.net.nextcloud.OcsApiWrapper;
 import org.comroid.api.net.nextcloud.component.TablesApi;
 import org.comroid.api.net.nextcloud.component.UserApi;
 import org.odftoolkit.odfdom.doc.OdfSpreadsheetDocument;
+import org.odftoolkit.odfdom.dom.style.OdfStyleFamily;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -167,7 +168,7 @@ public class Program {
                         table.getCellByPosition("H5").setStringValue("Dezimal");
                         table.getCellByPosition("I5").setStringValue("Anmerkungen");
 
-                        int tableRow = 8;
+                        int tableRow = 7;
                         nextDay:
                         for (var dayEntries : weekData.stream()
                                 .collect(Collectors.groupingBy(HourtableEntry::getDate))
@@ -226,14 +227,37 @@ public class Program {
                                         .setDoubleValue((double) TimeUnit.NANOSECONDS.toMinutes(dayDuration) / 60);
                                 table.getCellByPosition(8, tableRow).setStringValue(entry.getDetails());
 
-                                tableRow += 2;
+                                tableRow += 1;
                             }
+
+                            tableRow += 1;
                         }
 
-                        tableRow += 2;
                         table.getCellByPosition(6, tableRow).setStringValue("Woche Gesamt:");
                         table.getCellByPosition(7, tableRow)
                                 .setDoubleValue((double) TimeUnit.NANOSECONDS.toMinutes(weekDuration) / 60);
+
+                        // col sizes
+                        table.getColumnByIndex(0).setWidth(22);
+                        table.getColumnByIndex(1).setWidth(13);
+                        table.getColumnByIndex(2).setWidth(40);
+                        table.getColumnByIndex(3).setWidth(14);
+                        table.getColumnByIndex(4).setWidth(14);
+                        table.getColumnByIndex(5).setWidth(14);
+                        table.getColumnByIndex(6).setWidth(30);
+                        table.getColumnByIndex(7).setWidth(15);
+                        table.getColumnByIndex(8).setWidth(90);
+
+                        // borders
+                        final var styleBorder = "borders";
+                        var tableCellStyle = ods.getOrCreateDocumentStyles()
+                                .newStyle(styleBorder, OdfStyleFamily.TableCell);
+                        var cellStyleProp = tableCellStyle.newStyleTableCellPropertiesElement();
+                        cellStyleProp.setFoBorderAttribute("0.05pt solid #000000");
+
+                        for (var row = 4; row <= tableRow - 2; row++)
+                            for (var col = 0; col < 9; col++)
+                                table.getCellByPosition(col, row).getOdfElement().setStyleName(styleBorder);
 
                         ods.save(OUT_DIR + user + ".ods");
                     } catch (Exception e) {
