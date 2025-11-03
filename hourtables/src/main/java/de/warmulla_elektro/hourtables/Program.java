@@ -21,9 +21,11 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.chrono.ChronoLocalDate;
 import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoField;
 import java.time.temporal.ChronoUnit;
+import java.time.temporal.WeekFields;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
@@ -116,6 +118,9 @@ public class Program {
                     if (args.hasOption("year")) {
                         final var $year = year = Integer.parseInt(args.getOptionValue("year"));
                         stream = stream.filter(entry -> entry.getDate().getYear() == $year);
+                    } else {
+                        int $year = year;
+                        stream = stream.filter(entry -> entry.getDate().getYear() == $year);
                     }
 
                     if (args.hasOption("month")) {
@@ -123,26 +128,29 @@ public class Program {
                         stream = stream.filter(entry -> entry.getDate().getMonthValue() == month);
                     } else if (args.hasOption("week")) {
                         final var week = Integer.parseInt(args.getOptionValue("week"));
-                        stream = stream.filter(entry -> entry.getDate().get(ChronoField.ALIGNED_WEEK_OF_YEAR) == week);
+                        stream = stream.filter(entry -> week(entry.getDate()) == week);
                     }
                 }
 
                 final var useData = stream.toList();
 
+                if (useData.isEmpty()) continue;
+
                 // foreach week
                 final int[] weeks;
                 if (args.hasOption("week")) weeks = new int[]{ Integer.parseInt(args.getOptionValue("week")) };
                 else {
-                    var currentWeek = LocalDate.now().get(ChronoField.ALIGNED_WEEK_OF_YEAR);
-                    weeks = since != null ? IntStream.rangeClosed(since.get(ChronoField.ALIGNED_WEEK_OF_YEAR),
-                            currentWeek).toArray() : new int[]{ currentWeek };
+                    var currentWeek = week(LocalDate.now());
+                    weeks = since != null
+                            ? IntStream.rangeClosed(week(since), currentWeek).toArray()
+                            : new int[]{ currentWeek };
                 }
 
                 for (var week : weeks) {
-                    long weekDuration = 0;
-                    final var weekData = useData.stream()
-                            .filter(entry -> entry.getDate().get(ChronoField.ALIGNED_WEEK_OF_YEAR) == week)
-                            .toList();
+                    long      weekDuration = 0;
+                    final var weekData     = useData.stream().filter(entry -> week(entry.getDate()) == week).toList();
+
+                    if (weekData.isEmpty()) continue;
 
                     // tasks
                     // generate ODS file
@@ -236,5 +244,9 @@ public class Program {
                 }
             }
         }
+    }
+
+    private static int week(ChronoLocalDate date) {
+        return date.get(WeekFields.of(Locale.GERMAN).weekOfWeekBasedYear());
     }
 }
