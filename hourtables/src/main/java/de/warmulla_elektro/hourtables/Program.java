@@ -31,7 +31,6 @@ import java.time.format.DateTimeFormatter;
 import java.time.temporal.ChronoUnit;
 import java.time.temporal.WeekFields;
 import java.util.Locale;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.stream.Collectors;
@@ -90,7 +89,6 @@ public class Program {
                     .join()
                     .stream()
                     .map(HourtableEntry::convert)
-                    .sorted()
                     .toList();
 
             for (var user : users) {
@@ -158,8 +156,12 @@ public class Program {
                 }
 
                 for (var week : weeks) {
-                    long      weekDuration = 0;
-                    final var weekData     = useData.stream().filter(entry -> week(entry.getDate()) == week).toList();
+                    long weekDuration = 0;
+                    final var weekData =
+                            useData.stream()
+                                    .filter(entry -> week(entry.getDate()) == week)
+                                    .sorted(HourtableEntry.COMPARATOR)
+                                    .toList();
 
                     if (weekData.isEmpty()) {
                         log.warning("No entries for user %s, skipping".formatted(user));
@@ -191,6 +193,7 @@ public class Program {
                             long dayDuration = 0;
                             table.getCellByPosition(0, tableRow).setStringValue(SHEET_DATE.format(dayEntries.getKey()));
 
+                            var lastEntryDetails = "";
                             for (var entry : dayEntries.getValue()) {
                                 table.getCellByPosition(2, tableRow).setStringValue(entry.getCustomer());
 
@@ -222,32 +225,35 @@ public class Program {
 
                                     // row after break
                                     tableRow++;
+                                    start = entry.getBreakStart()
+                                            .plus(Duration.ofMinutes(15L * entry.getBreakMultiplier()));
                                     end           = entry.getEndTime();
                                     entryDuration = start.until(end, ChronoUnit.NANOS);
                                     dayDuration += entryDuration;
-                                    table.getCellByPosition(3, tableRow)
-                                            .setStringValue(TIME.format(entry.getBreakStart()
-                                                    .plus(Duration.ofMinutes(15 + Objects.requireNonNull(entry.getBreakMultiplier(),
-                                                            "breakMultiplier")))));
+                                    table.getCellByPosition(3, tableRow).setStringValue(TIME.format(start));
                                 }
+
                                 table.getCellByPosition(4, tableRow).setStringValue(TIME.format(end));
                                 table.getCellByPosition(5, tableRow)
                                         .setStringValue(TIME.format(LocalTime.ofNanoOfDay(entryDuration)));
 
-                                // also print day conclusion
-                                weekDuration += dayDuration;
-                                table.getCellByPosition(6, tableRow)
-                                        .setStringValue(TIME.format(LocalTime.ofNanoOfDay(dayDuration)));
-                                table.getCellByPosition(7, tableRow)
-                                        .setDoubleValue((double) TimeUnit.NANOSECONDS.toMinutes(dayDuration) / 60);
-                                table.getCellByPosition(8, tableRow).setStringValue(entry.getDetails());
-
                                 if (args.hasOption('o')) System.out.println(entry);
 
+                                lastEntryDetails = entry.getDetails();
                                 tableRow += 1;
                             }
 
-                            tableRow += 1;
+                            tableRow -= 1;
+
+                            // print day conclusion
+                            weekDuration += dayDuration;
+                            table.getCellByPosition(6, tableRow)
+                                    .setStringValue(TIME.format(LocalTime.ofNanoOfDay(dayDuration)));
+                            table.getCellByPosition(7, tableRow)
+                                    .setDoubleValue((double) TimeUnit.NANOSECONDS.toMinutes(dayDuration) / 60);
+                            table.getCellByPosition(8, tableRow).setStringValue(lastEntryDetails);
+
+                            tableRow += 2;
                         }
 
                         table.getCellByPosition(6, tableRow).setStringValue("Woche Gesamt:");
