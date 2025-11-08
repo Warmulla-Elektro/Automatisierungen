@@ -75,6 +75,9 @@ public class Program {
             throw new RuntimeException("Unable to parse command line arguments", e);
         }
 
+        var outDir = new FileHandle(OUT_DIR);
+        if (!outDir.exists() || !outDir.mkdirs()) throw new RuntimeException("Unable to create output directory");
+
         try (
                 var ocs = OcsApiWrapper.builder()
                         .baseUrl("https://warmulla.kaleidox.de")
