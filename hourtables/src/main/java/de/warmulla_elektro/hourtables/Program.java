@@ -172,7 +172,7 @@ public class Program {
 
                     // tasks
                     // generate ODS file
-                    var documentPath = new File(OUT_DIR).getAbsolutePath() + user + ".ods";
+                    var documentPath = new File(OUT_DIR).getAbsolutePath() + '/' + user + ".ods";
                     log.info("Generating ODS for %s at path '%s'".formatted(user, documentPath));
 
                     try (var ods = OdfSpreadsheetDocument.newSpreadsheetDocument()) {
