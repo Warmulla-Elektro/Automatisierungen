@@ -1,2 +1,3 @@
-git pull -f
-python3 HourTables.py -up
+#!/bin/bash
+
+(cd hourtables && ./build.sh) || (echo 'Could not run Hourtable script')
