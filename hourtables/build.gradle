@@ -1,9 +1,10 @@
 plugins {
     id 'application'
+    id 'com.github.johnrengelman.shadow' version '8.1.1'
 }
 
 group = 'de.warmulla_elektro'
-version = '1.0-SNAPSHOT'
+version = '1'
 mainClassName = 'de.warmulla_elektro.hourtables.Program'
 
 repositories {
@@ -28,4 +29,11 @@ dependencies {
 
 test {
     useJUnitPlatform()
+}
+
+tasks.register('simplifyShadow', Copy) {
+    dependsOn shadowJar
+    from shadowJar.outputs.files.singleFile
+    into "$rootDir/build/libs/"
+    rename { n -> "hourtables.jar" }
 }
