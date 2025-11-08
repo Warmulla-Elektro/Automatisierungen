@@ -76,7 +76,7 @@ public class Program {
         }
 
         var outDir = new FileHandle(OUT_DIR);
-        if (!outDir.exists() || !outDir.mkdirs()) throw new RuntimeException("Unable to create output directory");
+        if (!outDir.mkdirs()) throw new RuntimeException("Unable to create output directory");
 
         try (
                 var ocs = OcsApiWrapper.builder()
