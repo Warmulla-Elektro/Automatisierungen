@@ -20,6 +20,7 @@ import org.comroid.api.net.nextcloud.component.UserApi;
 import org.odftoolkit.odfdom.doc.OdfSpreadsheetDocument;
 import org.odftoolkit.odfdom.dom.style.OdfStyleFamily;
 
+import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.time.Duration;
@@ -171,7 +172,9 @@ public class Program {
 
                     // tasks
                     // generate ODS file
-                    log.info("Generating ODS for " + user);
+                    var documentPath = new File(OUT_DIR).getAbsolutePath() + user + ".ods";
+                    log.info("Generating ODS for %s at path '%s'".formatted(user, documentPath));
+
                     try (var ods = OdfSpreadsheetDocument.newSpreadsheetDocument()) {
                         var table = ods.getTableByName("Sheet1");
 
@@ -282,7 +285,7 @@ public class Program {
                             for (var col = 0; col < 9; col++)
                                 table.getCellByPosition(col, row).getOdfElement().setStyleName(styleBorder);
 
-                        ods.save(OUT_DIR + user + ".ods");
+                        ods.save(documentPath);
                     } catch (Exception e) {
                         log.log(Level.SEVERE, "Could not generate ODS file for " + user, e);
                         continue;
@@ -301,7 +304,7 @@ public class Program {
                     } catch (Throwable t) {
                         log.log(Level.WARNING, "Could not MKDIR", t);
                     }
-                    try (var fis = new FileInputStream(OUT_DIR + user + ".ods")) {
+                    try (var fis = new FileInputStream(documentPath)) {
                         files.upload(tableDir + '/' + user + ".ods", fis);
                     } catch (IOException e) {
                         log.log(Level.SEVERE, "Could not upload ODS file for " + user, e);
