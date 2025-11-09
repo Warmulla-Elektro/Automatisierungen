@@ -195,7 +195,6 @@ public class Program {
                             long dayDuration = 0;
                             table.getCellByPosition(0, tableRow).setStringValue(SHEET_DATE.format(dayEntries.getKey()));
 
-                            var lastEntryDetails = "";
                             for (var entry : dayEntries.getValue()) {
                                 table.getCellByPosition(2, tableRow).setStringValue(entry.getCustomer());
 
@@ -242,7 +241,10 @@ public class Program {
 
                                 if (args.hasOption('o')) System.out.println(entry);
 
-                                lastEntryDetails = entry.getDetails();
+                                var details = entry.getDetails();
+                                if (details.toLowerCase()
+                                        .contains("bitte angeben")) details = "(keine Details angegeben)";
+                                table.getCellByPosition(8, tableRow).setStringValue(details);
                                 tableRow += 1;
                             }
 
@@ -254,7 +256,6 @@ public class Program {
                                     .setStringValue(TIME.format(LocalTime.ofNanoOfDay(dayDuration)));
                             table.getCellByPosition(7, tableRow)
                                     .setDoubleValue((double) TimeUnit.NANOSECONDS.toMinutes(dayDuration) / 60);
-                            table.getCellByPosition(8, tableRow).setStringValue(lastEntryDetails);
 
                             tableRow += 2;
                         }
