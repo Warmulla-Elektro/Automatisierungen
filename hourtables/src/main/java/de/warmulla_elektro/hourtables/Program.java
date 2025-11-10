@@ -129,7 +129,7 @@ public class Program {
                         final var $year = year = Integer.parseInt(args.getOptionValue("year"));
                         stream = stream.filter(entry -> entry.getDate().getYear() == $year);
                     } else {
-                        int $year = year;
+                        final var $year = year;
                         stream = stream.filter(entry -> entry.getDate().getYear() == $year);
                     }
 
