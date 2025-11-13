@@ -42,8 +42,8 @@ import java.util.stream.IntStream;
 public class Program {
     public static final String            OUT_DIR             = "./.out/";
     public static final DateTimeFormatter DATE                = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    public static final DateTimeFormatter TIME = DateTimeFormatter.ofPattern("HH:mm");
-    public static final DateTimeFormatter SHEET_DATE          = DateTimeFormatter.ofPattern("EE dd.MM.");
+    public static final DateTimeFormatter TIME       = DateTimeFormatter.ofPattern("HH:mm");
+    public static final DateTimeFormatter SHEET_DATE = DateTimeFormatter.ofPattern("EE dd.MM.", Locale.GERMAN);
     public static final FileHandle        NC_API_BOT_PASSWORD = new FileHandle("nc_api_bot_password.cred");
     public static final Options           OPTIONS             = new Options() {{
         addOption(new Option("users", true, "Space separated list of users"));
