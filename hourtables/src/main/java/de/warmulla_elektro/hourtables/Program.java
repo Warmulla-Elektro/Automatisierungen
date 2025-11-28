@@ -18,6 +18,10 @@ import org.comroid.api.net.nextcloud.component.FilesApi;
 import org.comroid.api.net.nextcloud.component.TablesApi;
 import org.comroid.api.net.nextcloud.component.UserApi;
 import org.odftoolkit.odfdom.doc.OdfSpreadsheetDocument;
+import org.odftoolkit.odfdom.dom.attribute.fo.FoPageHeightAttribute;
+import org.odftoolkit.odfdom.dom.attribute.fo.FoPageWidthAttribute;
+import org.odftoolkit.odfdom.dom.attribute.style.StyleNumFormatAttribute;
+import org.odftoolkit.odfdom.dom.attribute.style.StylePrintOrientationAttribute;
 import org.odftoolkit.odfdom.dom.style.OdfStyleFamily;
 
 import java.io.File;
@@ -61,6 +65,18 @@ public class Program {
     }};
 
     public static void main(String... $args) {
+        /*
+        try (var vert = OdfSpreadsheetDocument.loadDocument(new File("vertikal.ods"));
+             var hori = OdfSpreadsheetDocument.loadDocument(new File("horizontal.ods"))) {
+
+            System.out.println(Debug.createObjectDump(vert));
+            System.out.println("#######################################");
+            System.out.println(Debug.createObjectDump(hori));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+         */
+
         Context.Base.ROOT.getMyMembers().add(new ObjectMapper(new JsonFactoryBuilder() {{
             enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION);
         }}.build()) {
@@ -176,6 +192,15 @@ public class Program {
                     log.info("Generating ODS for %s at path '%s'".formatted(user, documentPath));
 
                     try (var ods = OdfSpreadsheetDocument.newSpreadsheetDocument()) {
+                        var dom = ods.getStylesDom();
+                        var attributes = dom.getElementsByTagName("style:page-layout-properties")
+                                .item(0)
+                                .getAttributes();
+                        attributes.setNamedItem(new FoPageWidthAttribute(dom) {{setNodeValue("297mm");}});
+                        attributes.setNamedItem(new FoPageHeightAttribute(dom) {{setNodeValue("210.01mm");}});
+                        attributes.setNamedItem(new StyleNumFormatAttribute(dom) {{setNodeValue("1");}});
+                        attributes.setNamedItem(new StylePrintOrientationAttribute(dom) {{setNodeValue("landscape");}});
+
                         var table = ods.getTableByName("Sheet1");
 
                         table.getCellByPosition("A5").setStringValue(user);
