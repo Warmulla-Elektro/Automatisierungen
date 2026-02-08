@@ -1,16 +1,11 @@
 package de.warmulla_elektro.hourtables;
 
-import com.fasterxml.jackson.core.JsonFactoryBuilder;
-import com.fasterxml.jackson.core.StreamReadFeature;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import lombok.extern.java.Log;
 import org.apache.commons.cli.CommandLine;
 import org.apache.commons.cli.DefaultParser;
 import org.apache.commons.cli.Option;
 import org.apache.commons.cli.Options;
 import org.apache.commons.cli.ParseException;
-import org.comroid.api.func.ext.Context;
 import org.comroid.api.io.FileHandle;
 import org.comroid.api.model.Authentication;
 import org.comroid.api.net.nextcloud.OcsApiWrapper;
@@ -76,14 +71,6 @@ public class Program {
             throw new RuntimeException(e);
         }
          */
-
-        Context.Base.ROOT.getMyMembers().add(new ObjectMapper(new JsonFactoryBuilder() {{
-            enable(StreamReadFeature.INCLUDE_SOURCE_IN_LOCATION);
-        }}.build()) {
-            {
-                registerModule(new JavaTimeModule());
-            }
-        });
 
         CommandLine args;
         try {
